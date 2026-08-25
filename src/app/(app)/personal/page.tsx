@@ -17,11 +17,16 @@ export default async function PersonalPage({
   searchParams: Promise<{ q?: string; cargo?: string; estado?: string }>;
 }) {
   await requireRol(["directora", "administracion"]);
-  const { q = "", cargo = "", estado = "" } = await searchParams;
+  const { q = "", cargo = "", estado: estadoParam } = await searchParams;
+  // Sin filtro explícito en la URL (primera visita), se muestra solo el
+  // personal activo por defecto — son pocas personas, pero no tiene sentido
+  // mezclar inactivos/egresados sin que lo pidan. "todos" es la opción
+  // explícita para verlos todos.
+  const estado = estadoParam ?? "activo";
   const supabase = await createClient();
 
   const [trabajadores, cargos, conteos] = await Promise.all([
-    getTrabajadores({ q, cargoId: cargo || undefined, estado: estado || undefined }),
+    getTrabajadores({ q, cargoId: cargo || undefined, estado: estado === "todos" ? undefined : estado }),
     supabase.from("cargos").select("id, nombre").order("nombre"),
     getConteoPorCargo(),
   ]);
@@ -31,7 +36,9 @@ export default async function PersonalPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-stone-900">Personal</h1>
-          <p className="mt-1 text-sm text-stone-600">{trabajadores.length} resultado(s)</p>
+          <p className="mt-1 text-sm text-stone-600">
+            {trabajadores.length} {estado === "todos" ? "resultado(s)" : `resultado(s) — ${ESTADO_LABEL[estado] ?? estado}`}
+          </p>
         </div>
         <Link
           href="/personal/nuevo"
@@ -77,7 +84,7 @@ export default async function PersonalPage({
         <label className="flex flex-col gap-1">
           <span className="text-xs text-stone-500">Estado</span>
           <select name="estado" defaultValue={estado} className="rounded-md border border-stone-300 px-3 py-1.5 text-sm">
-            <option value="">Todos</option>
+            <option value="todos">Todos</option>
             {Object.entries(ESTADO_LABEL).map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
