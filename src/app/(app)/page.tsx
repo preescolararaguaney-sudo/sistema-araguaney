@@ -1,4 +1,3 @@
-import { getPerfil } from "@/lib/auth";
 import { getResumenCobranza } from "@/lib/queries/dashboard";
 import { formatBs, formatUsd } from "@/lib/format";
 
@@ -15,22 +14,6 @@ function Tarjeta({ titulo, valor, nota }: { titulo: string; valor: string; nota?
 }
 
 export default async function PanelPage() {
-  const perfil = await getPerfil();
-
-  if (perfil?.rol === "docente") {
-    return (
-      <div>
-        <h1 className="text-lg font-semibold text-stone-900">
-          Hola, {perfil.nombre_completo}
-        </h1>
-        <p className="mt-2 text-sm text-stone-600">
-          Tu panel de aula estará disponible cuando construyamos el módulo de
-          Alumnos.
-        </p>
-      </div>
-    );
-  }
-
   const resumen = await getResumenCobranza();
 
   if (!resumen.anioEscolar) {

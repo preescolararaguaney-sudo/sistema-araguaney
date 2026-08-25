@@ -3,10 +3,11 @@ import { NAV_ITEMS } from "./nav-items";
 import { NavLinks } from "./nav-links";
 import { LogoutButton } from "./logout-button";
 
+// Etiqueta del nivel de acceso, no necesariamente el cargo real de la
+// persona (ej. el Gerente General usa el rol "directora" = acceso total).
 const ROL_LABEL: Record<string, string> = {
-  directora: "Directora",
+  directora: "Acceso total",
   administracion: "Administración",
-  docente: "Docente",
 };
 
 export default async function AppLayout({
@@ -28,8 +29,8 @@ export default async function AppLayout({
           </h1>
           <p className="mt-2 text-sm text-amber-800">
             Ya iniciaste sesión correctamente, pero todavía no existe un
-            registro en el sistema con tu rol (directora, administración o
-            docente). Pide a la directora que lo cree.
+            registro en el sistema con tu rol (directora o administración).
+            Pide a la directora que lo cree.
           </p>
         </div>
       </div>

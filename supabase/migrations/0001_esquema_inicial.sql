@@ -17,6 +17,9 @@ create extension if not exists "pgcrypto"; -- para gen_random_uuid()
 -- ============================================================================
 -- `perfiles` extiende auth.users de Supabase (no se duplica email/password aquí).
 
+-- 'docente' queda reservado en el enum (Postgres no permite quitar valores
+-- una vez creados) pero no se usa: solo directivos y el gerente entran al
+-- sistema, así que ningún flujo de la app asigna ni ofrece este valor.
 create type rol_usuario as enum ('directora', 'administracion', 'docente');
 
 create table perfiles (
@@ -364,9 +367,7 @@ alter table perfiles
 -- `vigente_hasta`, en vez de borrar) para poder calcular rentabilidad por
 -- salón período a período: ingresos de esa aula (vía matriculas.aula_id →
 -- plan_pago_items → pagos) contra el costo del personal asignado en ese
--- mismo período. Este cruce se construye una vez esté lista la Fase 3
--- (Personal); mientras tanto sirve de base para RLS (una docente ve las
--- aulas donde está asignada).
+-- mismo período.
 create type rol_en_aula as enum ('titular', 'auxiliar', 'apoyo');
 
 create table trabajador_aulas (
@@ -770,24 +771,6 @@ as $$
   select rol from perfiles where id = auth.uid();
 $$;
 
--- Aulas donde el usuario logueado (si es docente) está asignada como personal
--- activo, vía perfiles.trabajador_id → trabajador_aulas. Reemplaza la vieja
--- tabla `docente_aulas`: la asignación de personal a un aula es una sola
--- fuente de verdad, útil tanto para RLS como para rentabilidad por salón.
-create or replace function mis_aulas_docente()
-returns setof uuid
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select ta.aula_id
-    from trabajador_aulas ta
-    join perfiles p on p.trabajador_id = ta.trabajador_id
-   where p.id = auth.uid()
-     and (ta.vigente_hasta is null or ta.vigente_hasta >= current_date);
-$$;
-
 alter table perfiles enable row level security;
 alter table bitacora enable row level security;
 alter table anios_escolares enable row level security;
@@ -827,7 +810,7 @@ create policy perfiles_directora_todo on perfiles for all
 create policy bitacora_directora_select on bitacora for select
   using (auth_rol() = 'directora');
 
--- --- Catálogos / calendario: directora y administración gestionan; docente solo lee ---
+-- --- Catálogos / calendario: directora y administración gestionan ---
 create policy anios_escolares_lectura on anios_escolares for select using (true);
 create policy anios_escolares_escritura on anios_escolares for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
@@ -853,65 +836,24 @@ create policy aulas_escritura on aulas for all
 create policy trabajador_aulas_finanzas on trabajador_aulas for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
 
--- --- Alumnos / personas / contactos: directora y administración ven todo;
---     docente solo ve alumnos matriculados en sus aulas asignadas, del año
---     escolar activo, y sin datos financieros (esas tablas ni las toca) ---
+-- --- Alumnos / personas / contactos: solo directora y administración
+--     (las docentes no tienen acceso al sistema) ---
 create policy alumnos_admin_todo on alumnos for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
-create policy alumnos_docente_lectura on alumnos for select
-  using (
-    auth_rol() = 'docente' and exists (
-      select 1 from matriculas m
-      join anios_escolares ae on ae.id = m.anio_escolar_id
-      where m.alumno_id = alumnos.id and m.aula_id in (select mis_aulas_docente()) and ae.activo
-    )
-  );
 
 create policy personas_admin_todo on personas for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
-create policy personas_docente_lectura on personas for select
-  using (
-    auth_rol() = 'docente' and exists (
-      select 1 from alumno_contactos ac
-      join matriculas m on m.alumno_id = ac.alumno_id
-      join anios_escolares ae on ae.id = m.anio_escolar_id
-      where ac.persona_id = personas.id and m.aula_id in (select mis_aulas_docente()) and ae.activo
-      union
-      select 1 from alumno_autorizados_retiro ar
-      join matriculas m on m.alumno_id = ar.alumno_id
-      join anios_escolares ae on ae.id = m.anio_escolar_id
-      where ar.persona_id = personas.id and m.aula_id in (select mis_aulas_docente()) and ae.activo
-    )
-  );
 
 create policy alumno_contactos_admin_todo on alumno_contactos for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
-create policy alumno_contactos_docente_lectura on alumno_contactos for select
-  using (
-    auth_rol() = 'docente' and exists (
-      select 1 from matriculas m
-      join anios_escolares ae on ae.id = m.anio_escolar_id
-      where m.alumno_id = alumno_contactos.alumno_id and m.aula_id in (select mis_aulas_docente()) and ae.activo
-    )
-  );
 
 create policy autorizados_admin_todo on alumno_autorizados_retiro for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
-create policy autorizados_docente_lectura on alumno_autorizados_retiro for select
-  using (
-    auth_rol() = 'docente' and exists (
-      select 1 from matriculas m
-      join anios_escolares ae on ae.id = m.anio_escolar_id
-      where m.alumno_id = alumno_autorizados_retiro.alumno_id and m.aula_id in (select mis_aulas_docente()) and ae.activo
-    )
-  );
 
 create policy matriculas_admin_todo on matriculas for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
-create policy matriculas_docente_lectura on matriculas for select
-  using (auth_rol() = 'docente' and aula_id in (select mis_aulas_docente()));
 
--- --- Financiero (cobranza): solo directora y administración; docente sin acceso ---
+-- --- Financiero (cobranza): solo directora y administración ---
 create policy alumno_precios_pactados_finanzas on alumno_precios_pactados for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
 create policy plan_pago_items_finanzas on plan_pago_items for all
@@ -921,7 +863,7 @@ create policy pagos_finanzas on pagos for all
 create policy pago_aplicaciones_finanzas on pago_aplicaciones for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
 
--- --- Personal y nómina: solo directora y administración; docente sin acceso ---
+-- --- Personal y nómina: solo directora y administración ---
 create policy cargos_lectura on cargos for select
   using (auth_rol() in ('directora', 'administracion'));
 create policy trabajadores_finanzas on trabajadores for all

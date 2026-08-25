@@ -8,11 +8,16 @@ export type NavItem = {
 
 // Se amplía a medida que avanzan las fases (alumnos, personal, nómina).
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Panel", roles: ["directora", "administracion", "docente"] },
+  { href: "/", label: "Panel", roles: ["directora", "administracion"] },
   {
     href: "/alumnos",
     label: "Alumnos",
-    roles: ["directora", "administracion", "docente"],
+    roles: ["directora", "administracion"],
+  },
+  {
+    href: "/personal",
+    label: "Personal",
+    roles: ["directora", "administracion"],
   },
   {
     href: "/cobranza/pagos/nuevo",

@@ -3,7 +3,11 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export type Rol = "directora" | "administracion" | "docente";
+// Solo directivos y el gerente entran al sistema (las docentes no tienen
+// acceso). "directora" = acceso total; "administracion" = cobranza, alumnos,
+// personal y nómina, sin gestión de usuarios — se asigna tanto a la
+// Directora del plantel como al Asistente Administrativo.
+export type Rol = "directora" | "administracion";
 
 export type Perfil = {
   id: string;
