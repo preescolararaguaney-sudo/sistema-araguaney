@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { MatriculaForm } from "./matricula-form";
+import { AlumnoForm } from "./alumno-form";
 
-export default async function NuevaMatriculaPage() {
+export default async function NuevoAlumnoPage() {
   await requireRol(["directora", "administracion"]);
   const supabase = await createClient();
 
@@ -28,7 +28,7 @@ export default async function NuevaMatriculaPage() {
           No hay un año escolar activo
         </h1>
         <p className="mt-2 text-sm text-amber-800">
-          Crea primero el año escolar en{" "}
+          Créalo en{" "}
           <Link href="/configuracion/calendario" className="underline">
             Año escolar y lapsos
           </Link>
@@ -40,15 +40,17 @@ export default async function NuevaMatriculaPage() {
 
   return (
     <div>
-      <h1 className="text-lg font-semibold text-stone-900">
-        Matricular alumno — {anioEscolar.nombre}
+      <Link href="/alumnos" className="text-xs text-stone-500 hover:underline">
+        ← Volver a alumnos
+      </Link>
+      <h1 className="mt-1 text-lg font-semibold text-stone-900">
+        Nuevo alumno — {anioEscolar.nombre}
       </h1>
       <p className="mt-1 mb-4 text-sm text-stone-600">
-        Ficha mínima para poder generar el plan de pagos y probar cobranza.
-        La ficha completa (padre, madre, autorizados a retirar, datos
-        médicos) se agrega en el módulo de Alumnos.
+        Ficha completa: representante, padre, madre, autorizados a retirar y
+        datos médicos.
       </p>
-      <MatriculaForm aulas={aulas ?? []} anioEscolarId={anioEscolar.id} />
+      <AlumnoForm aulas={aulas ?? []} anioEscolarId={anioEscolar.id} />
     </div>
   );
 }

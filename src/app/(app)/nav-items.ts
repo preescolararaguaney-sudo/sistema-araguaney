@@ -10,9 +10,9 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Panel", roles: ["directora", "administracion", "docente"] },
   {
-    href: "/cobranza/matriculas/nueva",
-    label: "Matricular (básico)",
-    roles: ["directora", "administracion"],
+    href: "/alumnos",
+    label: "Alumnos",
+    roles: ["directora", "administracion", "docente"],
   },
   {
     href: "/cobranza/pagos/nuevo",
