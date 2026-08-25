@@ -350,7 +350,14 @@ create table trabajadores (
   fecha_ingreso date not null,
   fecha_egreso date,
   tipo_contrato text not null default 'indefinido',
+  -- Compensación TOTAL objetivo en USD (lo que realmente recibe el
+  -- trabajador al mes, ej. 250 = 125 quincenales). No es el salario que se
+  -- declara legalmente — ver `salario_formal_mensual_usd`.
   salario_base_mensual numeric(12,2) not null check (salario_base_mensual >= 0),
+  -- Salario formal/legal en USD, normalmente mucho menor que el anterior:
+  -- es la base sobre la que se calculan IVSS/RPE/FAOV en el recibo oficial
+  -- de nómina. El resto de la compensación se paga como bono sin retención.
+  salario_formal_mensual_usd numeric(10,2) check (salario_formal_mensual_usd >= 0),
   banco text,
   numero_cuenta text,
   estado estado_trabajador not null default 'activo',
@@ -496,6 +503,9 @@ create table recibos_nomina (
   id uuid primary key default gen_random_uuid(),
   trabajador_id uuid not null references trabajadores(id) on delete restrict,
   periodo_nomina_id uuid not null references periodos_nomina(id) on delete restrict,
+  tasa_bcv_valor numeric(10,4) not null check (tasa_bcv_valor > 0),
+  dias_trabajados numeric(4,1) not null default 10,
+  dias_descanso numeric(4,1) not null default 5,
   total_asignaciones numeric(12,2) not null default 0,
   total_deducciones numeric(12,2) not null default 0,
   neto_pagar numeric(12,2) not null default 0,
@@ -517,6 +527,23 @@ create table nomina_detalle (
 );
 
 create index idx_nomina_detalle_recibo on nomina_detalle (recibo_nomina_id);
+
+insert into nomina_conceptos (codigo, nombre, tipo, es_de_ley) values
+  ('salario_formal', 'Salario básico por días trabajados y descanso', 'asignacion', true),
+  ('bono', 'Bono complementario', 'asignacion', false),
+  ('cestaticket', 'Cestaticket', 'asignacion', false),
+  ('ivss', 'Seguro Social Obligatorio', 'deduccion', true),
+  ('rpe', 'Régimen Prestacional de Empleo', 'deduccion', true),
+  ('faov', 'Fondo de Ahorro Obligatorio para la Vivienda', 'deduccion', true);
+
+-- Valores tomados directamente de la plantilla de recibo de nómina que ya
+-- usa el plantel (confirmados por el usuario, no un valor genérico de
+-- internet). ISLR no se retiene a ningún trabajador actualmente.
+insert into parametros_nomina (clave, valor, descripcion, fuente, verificado_por_contador, vigente_desde) values
+  ('ivss_pct_trabajador', 0.04, 'Retención de Seguro Social Obligatorio al trabajador', 'Plantilla de recibo de nómina del plantel', true, '2026-01-01'),
+  ('rpe_pct_trabajador', 0.005, 'Retención de Régimen Prestacional de Empleo al trabajador', 'Plantilla de recibo de nómina del plantel', true, '2026-01-01'),
+  ('faov_pct_trabajador', 0.01, 'Retención de Fondo de Ahorro Obligatorio para la Vivienda', 'Plantilla de recibo de nómina del plantel', true, '2026-01-01'),
+  ('cestaticket_monto_usd', 40.00, 'Cestaticket mensual, pagado a la tasa del día 5', 'Confirmado por el usuario', true, '2026-01-01');
 
 -- ============================================================================
 -- 13. FUNCIÓN: generar plan de pagos al inscribir un alumno

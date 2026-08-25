@@ -20,6 +20,11 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["directora", "administracion"],
   },
   {
+    href: "/nomina",
+    label: "Nómina",
+    roles: ["directora", "administracion"],
+  },
+  {
     href: "/cobranza/pagos/nuevo",
     label: "Registrar pago",
     roles: ["directora", "administracion"],

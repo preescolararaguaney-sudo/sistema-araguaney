@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPerfil } from "@/lib/auth";
 import { getTrabajadorFicha } from "@/lib/queries/personal";
 import { createClient } from "@/lib/supabase/server";
-import { formatFecha, formatBs } from "@/lib/format";
+import { formatFecha, formatUsd } from "@/lib/format";
 import { EstadoForm } from "./estado-form";
 import { NovedadForm } from "./novedad-form";
 import { AulaForm } from "./aula-form";
@@ -45,7 +45,11 @@ export default async function TrabajadorDetallePage({
             <Dato etiqueta="Cédula" valor={ficha.cedula} />
             <Dato etiqueta="Teléfono" valor={ficha.telefono || "—"} />
             <Dato etiqueta="Dirección" valor={ficha.direccion || "—"} />
-            <Dato etiqueta="Salario base mensual" valor={formatBs(ficha.salario_base_mensual)} />
+            <Dato etiqueta="Sueldo mensual objetivo" valor={formatUsd(ficha.salario_base_mensual)} />
+            <Dato
+              etiqueta="Salario formal mensual (nómina legal)"
+              valor={ficha.salario_formal_mensual_usd !== null ? formatUsd(ficha.salario_formal_mensual_usd) : "—"}
+            />
             <Dato
               etiqueta="Datos bancarios"
               valor={ficha.banco ? `${ficha.banco} — ${ficha.numero_cuenta ?? ""}` : "—"}

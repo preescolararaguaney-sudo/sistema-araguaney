@@ -92,6 +92,7 @@ export type TrabajadorFicha = {
   fecha_egreso: string | null;
   tipo_contrato: string;
   salario_base_mensual: number;
+  salario_formal_mensual_usd: number | null;
   banco: string | null;
   numero_cuenta: string | null;
   estado: string;
@@ -107,7 +108,7 @@ export async function getTrabajadorFicha(id: string): Promise<TrabajadorFicha | 
     .from("trabajadores")
     .select(
       `id, nombre, apellido, cedula, telefono, direccion, cargo_id, fecha_ingreso, fecha_egreso,
-       tipo_contrato, salario_base_mensual, banco, numero_cuenta, estado,
+       tipo_contrato, salario_base_mensual, salario_formal_mensual_usd, banco, numero_cuenta, estado,
        cargo:cargos!inner(nombre)`,
     )
     .eq("id", id)
@@ -148,6 +149,8 @@ export async function getTrabajadorFicha(id: string): Promise<TrabajadorFicha | 
     fecha_egreso: t.fecha_egreso,
     tipo_contrato: t.tipo_contrato,
     salario_base_mensual: Number(t.salario_base_mensual),
+    salario_formal_mensual_usd:
+      t.salario_formal_mensual_usd === null ? null : Number(t.salario_formal_mensual_usd),
     banco: t.banco,
     numero_cuenta: t.numero_cuenta,
     estado: t.estado,
