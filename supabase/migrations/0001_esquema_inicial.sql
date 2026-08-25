@@ -559,14 +559,20 @@ begin
     raise exception 'El año escolar % no tiene los 3 lapsos configurados', v_anio.nombre;
   end if;
 
+  -- Se toma el precio más reciente configurado para este año escolar, SIN
+  -- compararlo contra la fecha de hoy: la matrícula suele registrarse antes
+  -- de que arranque el año escolar (ej. inscribir en agosto para septiembre),
+  -- así que "vigente_desde <= current_date" descartaría el precio correcto.
+  -- El monto queda congelado en el plan al generarse (regla 9): un cambio de
+  -- precio posterior no altera planes ya emitidos, solo los nuevos.
   select monto_usd into v_precio_matricula
     from precios
-   where anio_escolar_id = v_anio.id and concepto = 'matricula' and vigente_desde <= current_date
+   where anio_escolar_id = v_anio.id and concepto = 'matricula'
    order by vigente_desde desc limit 1;
 
   select monto_usd into v_precio_mensualidad_base
     from precios
-   where anio_escolar_id = v_anio.id and concepto = 'mensualidad' and vigente_desde <= current_date
+   where anio_escolar_id = v_anio.id and concepto = 'mensualidad'
    order by vigente_desde desc limit 1;
 
   if v_precio_matricula is null or v_precio_mensualidad_base is null then
@@ -586,7 +592,12 @@ begin
         order by vigente_desde_mes desc limit 1),
       v_precio_mensualidad_base
     );
-    v_nombre_mes := to_char(v_mes_iter, 'TMMonth YYYY');
+    -- Nombre del mes en español, sin depender del locale del servidor
+    -- Postgres (to_char('TMMonth') devuelve el nombre en inglés si el
+    -- servidor no tiene un locale es_ES instalado, como ocurre en Supabase).
+    v_nombre_mes := (array['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'])[extract(month from v_mes_iter)::int]
+      || ' ' || extract(year from v_mes_iter)::text;
     insert into plan_pago_items (matricula_id, tipo, mes_referencia, descripcion, monto_usd, fecha_vencimiento)
     values (
       p_matricula_id, 'mensualidad', v_mes_iter,
@@ -677,11 +688,11 @@ begin
 
   update plan_pago_items
      set monto_usd_pagado = v_total_aplicado,
-         estado = case
+         estado = (case
            when v_total_aplicado >= v_monto then 'pagado'
            when v_total_aplicado > 0 then 'parcial'
            else 'pendiente'
-         end
+         end)::estado_cuota
    where id = v_item_id;
 
   return coalesce(new, old);
@@ -706,7 +717,7 @@ as $$
 begin
   if new.anulado and not old.anulado then
     update plan_pago_items
-       set estado = case
+       set estado = (case
              when (select coalesce(sum(pa.monto_usd_aplicado), 0) from pago_aplicaciones pa
                      join pagos p on p.id = pa.pago_id
                     where pa.plan_item_id = plan_pago_items.id and not p.anulado) >= monto_usd
@@ -716,7 +727,7 @@ begin
                     where pa.plan_item_id = plan_pago_items.id and not p.anulado) > 0
                then 'parcial'
              else 'pendiente'
-           end,
+           end)::estado_cuota,
            monto_usd_pagado = (select coalesce(sum(pa.monto_usd_aplicado), 0) from pago_aplicaciones pa
                                   join pagos p on p.id = pa.pago_id
                                  where pa.plan_item_id = plan_pago_items.id and not p.anulado)
