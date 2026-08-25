@@ -3,6 +3,7 @@ import { requireRol } from "@/lib/auth";
 import { getReciboDetalle } from "@/lib/queries/pagos";
 import { formatBs, formatFecha, formatUsd, METODO_PAGO_LABEL } from "@/lib/format";
 import { PrintButton } from "./print-button";
+import { AnularForm } from "./anular-form";
 
 export default async function ReciboPage({
   params,
@@ -70,6 +71,12 @@ export default async function ReciboPage({
           <p className="text-sm text-stone-600">{formatBs(recibo.monto_bs_total)}</p>
         </div>
       </div>
+
+      {!recibo.anulado && (
+        <div className="mx-auto w-full max-w-md">
+          <AnularForm pagoId={recibo.id} />
+        </div>
+      )}
     </div>
   );
 }

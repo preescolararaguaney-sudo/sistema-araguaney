@@ -16,7 +16,8 @@ export async function registrarPago(
   const matriculaId = String(formData.get("matricula_id") ?? "");
   const fechaPago = String(formData.get("fecha_pago") ?? "");
   const tasaBcv = Number(formData.get("tasa_bcv"));
-  const montoUsdTotal = Number(formData.get("monto_usd_total"));
+  const monedaPago = String(formData.get("moneda_pago") ?? "BS");
+  const montoIngresado = Number(formData.get("monto"));
   const metodo = String(formData.get("metodo") ?? "");
   const referencia = String(formData.get("referencia") ?? "").trim();
   const comprobanteUrl = String(formData.get("comprobante_url") ?? "").trim();
@@ -27,9 +28,19 @@ export async function registrarPago(
   if (!tasaBcv || tasaBcv <= 0) {
     return { error: "Indica la tasa BCV del día (mayor a 0)." };
   }
-  if (!montoUsdTotal || montoUsdTotal <= 0) {
+  if (!montoIngresado || montoIngresado <= 0) {
     return { error: "Indica un monto a pagar mayor a 0." };
   }
+  if (monedaPago !== "BS" && monedaPago !== "USD") {
+    return { error: "Indica en qué moneda se recibió el pago." };
+  }
+
+  // El monto SIEMPRE se guarda en USD (regla de negocio): si el representante
+  // pagó en bolívares, se convierte con la tasa del día antes de continuar.
+  const montoUsdTotal =
+    monedaPago === "BS"
+      ? Math.round((montoIngresado / tasaBcv) * 100) / 100
+      : Math.round(montoIngresado * 100) / 100;
 
   const { data: cuotas, error: errorCuotas } = await supabase
     .from("plan_pago_items")
