@@ -1,0 +1,23 @@
+# Secretos y datos sensibles — nunca deben entrar al repositorio
+recovery-codes.txt
+*.env
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+build/
+node_modules/
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+
+# Vercel
+.vercel
+
+# Sistema
+.DS_Store
+Thumbs.db
