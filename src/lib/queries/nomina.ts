@@ -86,7 +86,7 @@ export type TrabajadorParaNomina = {
   nombre: string;
   apellido: string;
   salario_base_mensual: number;
-  salario_formal_mensual_usd: number | null;
+  salario_formal_mensual_bs: number | null;
 };
 
 export type ReciboResumen = {
@@ -115,7 +115,7 @@ export async function getPeriodoDetalle(periodoId: string): Promise<{
 
   const { data: trabajadores } = await supabase
     .from("trabajadores")
-    .select("id, nombre, apellido, salario_base_mensual, salario_formal_mensual_usd")
+    .select("id, nombre, apellido, salario_base_mensual, salario_formal_mensual_bs")
     .eq("estado", "activo")
     .order("apellido");
 
@@ -135,8 +135,8 @@ export async function getPeriodoDetalle(periodoId: string): Promise<{
         nombre: t.nombre,
         apellido: t.apellido,
         salario_base_mensual: Number(t.salario_base_mensual),
-        salario_formal_mensual_usd:
-          t.salario_formal_mensual_usd === null ? null : Number(t.salario_formal_mensual_usd),
+        salario_formal_mensual_bs:
+          t.salario_formal_mensual_bs === null ? null : Number(t.salario_formal_mensual_bs),
       })),
     generados: (recibos ?? []).map((r) => {
       const trabajador = Array.isArray(r.trabajador) ? r.trabajador[0] : r.trabajador;

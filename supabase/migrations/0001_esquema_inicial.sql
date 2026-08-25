@@ -352,12 +352,16 @@ create table trabajadores (
   tipo_contrato text not null default 'indefinido',
   -- Compensación TOTAL objetivo en USD (lo que realmente recibe el
   -- trabajador al mes, ej. 250 = 125 quincenales). No es el salario que se
-  -- declara legalmente — ver `salario_formal_mensual_usd`.
+  -- declara legalmente — ver `salario_formal_mensual_bs`.
   salario_base_mensual numeric(12,2) not null check (salario_base_mensual >= 0),
-  -- Salario formal/legal en USD, normalmente mucho menor que el anterior:
-  -- es la base sobre la que se calculan IVSS/RPE/FAOV en el recibo oficial
-  -- de nómina. El resto de la compensación se paga como bono sin retención.
-  salario_formal_mensual_usd numeric(10,2) check (salario_formal_mensual_usd >= 0),
+  -- Salario formal/legal, normalmente mucho menor que el anterior: es la
+  -- base sobre la que se calculan IVSS/RPE/FAOV en el recibo oficial de
+  -- nómina. Va en BOLÍVARES (no USD): está atado al salario mínimo legal,
+  -- que el gobierno fija en Bs y no se reconvierte con la tasa del día — a
+  -- diferencia del bono, que sí se calcula en USD a la tasa de cada
+  -- quincena. El resto de la compensación se paga como ese bono, sin
+  -- retención.
+  salario_formal_mensual_bs numeric(12,2) check (salario_formal_mensual_bs >= 0),
   banco text,
   numero_cuenta text,
   estado estado_trabajador not null default 'activo',

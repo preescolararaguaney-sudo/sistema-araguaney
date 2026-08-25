@@ -63,15 +63,17 @@ export function TrabajadorForm({ cargos }: { cargos: Cargo[] }) {
         <legend className="px-1 text-sm font-semibold text-stone-900">Compensación (nómina)</legend>
         <p className="mb-3 text-xs text-stone-500">
           El sueldo mensual objetivo es lo que realmente recibe el
-          trabajador en total. El salario formal es el monto (mucho menor)
-          que se declara legalmente y sobre el que se calculan IVSS/RPE/FAOV
-          — el resto se paga como bono sin retención.
+          trabajador en total, en USD. El salario formal es el monto (mucho
+          menor) que se declara legalmente y sobre el que se calculan
+          IVSS/RPE/FAOV — va en bolívares porque está atado al salario
+          mínimo legal, no se reconvierte con la tasa del día. El resto se
+          paga como bono sin retención.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Campo label="Sueldo mensual objetivo (USD)" name="salario_base_mensual" type="number" step="0.01" />
           <Campo
-            label="Salario formal mensual para nómina legal (USD, opcional)"
-            name="salario_formal_mensual_usd"
+            label="Salario formal mensual para nómina legal (Bs, opcional)"
+            name="salario_formal_mensual_bs"
             type="number"
             step="0.01"
             required={false}

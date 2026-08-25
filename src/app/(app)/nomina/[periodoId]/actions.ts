@@ -55,7 +55,7 @@ export async function generarNominaPeriodo(
 
   const { data: trabajadores } = await supabase
     .from("trabajadores")
-    .select("id, salario_formal_mensual_usd")
+    .select("id, salario_formal_mensual_bs")
     .in(
       "id",
       filas.map((f) => f.trabajador_id),
@@ -64,11 +64,13 @@ export async function generarNominaPeriodo(
   let generados = 0;
   for (const fila of filas) {
     const trabajador = trabajadores?.find((t) => t.id === fila.trabajador_id);
-    const salarioFormalUsd = Number(trabajador?.salario_formal_mensual_usd ?? 0);
+    // Ya está en bolívares: va atado al salario mínimo legal (que el
+    // gobierno fija en Bs), así que NO se reconvierte con la tasa del día
+    // — a diferencia del bono, que sí se calcula en USD a la tasa.
+    const salarioFormalMensualBs = Number(trabajador?.salario_formal_mensual_bs ?? 0);
     const diasTotal = fila.dias_trabajados + fila.dias_descanso;
 
-    const salarioMensualBs = salarioFormalUsd * tasa;
-    const salarioDiarioBs = salarioMensualBs / 30;
+    const salarioDiarioBs = salarioFormalMensualBs / 30;
     const salarioFormalAsignacionBs = round2(diasTotal * salarioDiarioBs);
 
     const ivss = round2(salarioFormalAsignacionBs * params.ivssPct);

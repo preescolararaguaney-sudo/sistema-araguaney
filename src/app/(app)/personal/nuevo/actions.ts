@@ -22,7 +22,7 @@ export async function crearTrabajador(
   const fechaIngreso = String(formData.get("fecha_ingreso") ?? "");
   const tipoContrato = String(formData.get("tipo_contrato") ?? "indefinido");
   const salarioBase = Number(formData.get("salario_base_mensual"));
-  const salarioFormalRaw = formData.get("salario_formal_mensual_usd");
+  const salarioFormalRaw = formData.get("salario_formal_mensual_bs");
   const salarioFormal = salarioFormalRaw ? Number(salarioFormalRaw) : null;
   const banco = String(formData.get("banco") ?? "").trim();
   const numeroCuenta = String(formData.get("numero_cuenta") ?? "").trim();
@@ -46,7 +46,7 @@ export async function crearTrabajador(
       fecha_ingreso: fechaIngreso,
       tipo_contrato: tipoContrato || "indefinido",
       salario_base_mensual: salarioBase,
-      salario_formal_mensual_usd: salarioFormal,
+      salario_formal_mensual_bs: salarioFormal,
       banco: banco || null,
       numero_cuenta: numeroCuenta || null,
     })
