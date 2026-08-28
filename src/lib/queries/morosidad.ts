@@ -25,7 +25,7 @@ export async function getMorosos(anioEscolarId: string): Promise<Moroso[]> {
          id, anio_escolar_id, estado,
          alumno:alumnos!inner(
            nombre, apellido,
-           alumno_contactos!inner(es_responsable_pago, persona:personas!inner(nombre, apellido, telefono))
+           alumno_contactos(es_responsable_pago, persona:personas!inner(nombre, apellido, telefono))
          ),
          aula:aulas!inner(nombre)
        )`,

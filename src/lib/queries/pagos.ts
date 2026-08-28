@@ -29,7 +29,7 @@ export async function getReciboDetalle(pagoId: string): Promise<ReciboDetalle | 
        matricula:matriculas!inner(
          alumno:alumnos!inner(
            nombre, apellido,
-           alumno_contactos!inner(es_responsable_pago, persona:personas!inner(nombre, apellido))
+           alumno_contactos(es_responsable_pago, persona:personas!inner(nombre, apellido))
          )
        )`,
     )

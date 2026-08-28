@@ -22,7 +22,7 @@ export type AlumnoFicha = {
   id: string;
   nombre: string;
   apellido: string;
-  fecha_nacimiento: string;
+  fecha_nacimiento: string | null;
   datos_medicos: string | null;
   alergias: string | null;
   matricula: {

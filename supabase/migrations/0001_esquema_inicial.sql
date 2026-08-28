@@ -161,7 +161,9 @@ create table alumnos (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   apellido text not null,
-  fecha_nacimiento date not null,
+  -- Nullable: en la práctica hay niños en el registro histórico sin fecha
+  -- de nacimiento capturada todavía; se completa después en la ficha.
+  fecha_nacimiento date,
   datos_medicos text,
   alergias text,
   creado_en timestamptz not null default now()

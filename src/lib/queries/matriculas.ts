@@ -20,14 +20,16 @@ export async function buscarMatriculas(
 
   // La relación real es matriculas -> alumnos -> alumno_contactos (no hay FK
   // directa matrícula-contacto), así que alumno_contactos va anidado DENTRO
-  // del embed de "alumno", no como hermano de "matriculas".
+  // del embed de "alumno", no como hermano de "matriculas". Sin `!inner` en
+  // alumno_contactos: un alumno recién importado (todavía sin representante
+  // cargado) debe seguir apareciendo en la búsqueda, solo que sin ese dato.
   const { data, error } = await supabase
     .from("matriculas")
     .select(
       `id,
        alumno:alumnos!inner(
          id, nombre, apellido,
-         alumno_contactos!inner(es_responsable_pago, persona:personas!inner(nombre, apellido, cedula))
+         alumno_contactos(es_responsable_pago, persona:personas!inner(nombre, apellido, cedula))
        ),
        aula:aulas!inner(nombre)`,
     )
@@ -100,7 +102,7 @@ export async function getMatriculaDetalle(
       `id,
        alumno:alumnos!inner(
          nombre, apellido,
-         alumno_contactos!inner(es_responsable_pago, persona:personas!inner(nombre, apellido, telefono))
+         alumno_contactos(es_responsable_pago, persona:personas!inner(nombre, apellido, telefono))
        ),
        aula:aulas!inner(nombre),
        anio_escolar:anios_escolares!inner(nombre)`,

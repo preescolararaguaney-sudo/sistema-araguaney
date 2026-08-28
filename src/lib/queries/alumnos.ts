@@ -23,7 +23,7 @@ export async function getAlumnos(
       `id, estado, aula_id,
        alumno:alumnos!inner(
          id, nombre, apellido,
-         alumno_contactos!inner(es_responsable_pago, persona:personas!inner(nombre, apellido))
+         alumno_contactos(es_responsable_pago, persona:personas!inner(nombre, apellido))
        ),
        aula:aulas!inner(nombre)`,
     )
@@ -62,7 +62,7 @@ export async function getAlumnos(
       apellido: alumno?.apellido ?? "",
       aula_nombre: aula?.nombre ?? "",
       estado: m.estado,
-      representante_nombre: persona ? `${persona.nombre} ${persona.apellido}` : "",
+      representante_nombre: persona ? `${persona.nombre} ${persona.apellido}` : "— (sin cargar)",
     };
   });
 

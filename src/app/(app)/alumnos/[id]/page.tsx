@@ -43,20 +43,30 @@ export default async function AlumnoDetallePage({
           <h1 className="text-lg font-semibold text-stone-900">
             {ficha.nombre} {ficha.apellido}
           </h1>
-          {esAdmin && ficha.matricula && (
+          {esAdmin && (
             <div className="flex gap-2">
               <Link
-                href={`/cobranza/estado-cuenta?matricula=${ficha.matricula.id}`}
+                href={`/alumnos/${ficha.id}/editar`}
                 className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
               >
-                Estado de cuenta
+                Editar ficha
               </Link>
-              <Link
-                href={`/cobranza/pagos/nuevo?matricula=${ficha.matricula.id}`}
-                className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-              >
-                Registrar pago
-              </Link>
+              {ficha.matricula && (
+                <>
+                  <Link
+                    href={`/cobranza/estado-cuenta?matricula=${ficha.matricula.id}`}
+                    className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
+                  >
+                    Estado de cuenta
+                  </Link>
+                  <Link
+                    href={`/cobranza/pagos/nuevo?matricula=${ficha.matricula.id}`}
+                    className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+                  >
+                    Registrar pago
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -77,7 +87,10 @@ export default async function AlumnoDetallePage({
         <section className="rounded-xl border border-stone-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-stone-900">Datos del alumno</h2>
           <dl className="flex flex-col gap-2 text-sm">
-            <Dato etiqueta="Fecha de nacimiento" valor={formatFecha(ficha.fecha_nacimiento)} />
+            <Dato
+              etiqueta="Fecha de nacimiento"
+              valor={ficha.fecha_nacimiento ? formatFecha(ficha.fecha_nacimiento) : "— (pendiente)"}
+            />
             <Dato etiqueta="Datos médicos" valor={ficha.datos_medicos || "—"} />
             <Dato etiqueta="Alergias" valor={ficha.alergias || "—"} />
           </dl>
