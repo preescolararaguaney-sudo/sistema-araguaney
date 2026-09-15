@@ -208,36 +208,45 @@ export async function aprobarSolicitud(
     });
   }
 
-  const repResultado = await findOrCreatePersona(supabase, {
-    cedula: sol.representante_cedula as string,
-    nombre: sol.representante_nombre as string,
-    apellido: sol.representante_apellido as string,
-    telefono: sol.representante_telefono as string | null,
-    email: sol.representante_email as string | null,
-  });
-  if ("error" in repResultado) return { error: `Representante: ${repResultado.error}` };
-  contactosPendientes.push({
-    persona_id: repResultado.id,
-    rol: "representante_pago",
-    es_responsable_pago: true,
-    contacto_emergencia: null,
-    vive_con_nino: null,
-    horario_con_nino: null,
-    motivo_seleccion_institucion: null,
-  });
+  // El formulario público ya no pregunta quién es el representante de
+  // pago (se quitó esa sección); solo se crea este contacto si la
+  // solicitud SÍ trae esos datos (ej. una solicitud vieja, de antes del
+  // cambio). Si no vienen, el alumno queda sin responsable de pago
+  // asignado — la directora lo asigna después desde /alumnos/[id]/editar.
+  if (sol.representante_nombre && sol.representante_apellido && sol.representante_cedula) {
+    const repResultado = await findOrCreatePersona(supabase, {
+      cedula: sol.representante_cedula as string,
+      nombre: sol.representante_nombre as string,
+      apellido: sol.representante_apellido as string,
+      telefono: sol.representante_telefono as string | null,
+      email: sol.representante_email as string | null,
+    });
+    if ("error" in repResultado) return { error: `Representante: ${repResultado.error}` };
+    contactosPendientes.push({
+      persona_id: repResultado.id,
+      rol: "representante_pago",
+      es_responsable_pago: true,
+      contacto_emergencia: null,
+      vive_con_nino: null,
+      horario_con_nino: null,
+      motivo_seleccion_institucion: null,
+    });
+  }
 
   // upsert (no insert): si esta solicitud está completando un alumno ya
   // inscrito y el mismo representante/padre/madre ya había sido cargado
   // antes (misma cédula, mismo rol), se actualiza en vez de fallar por la
   // restricción unique(alumno_id, persona_id, rol).
-  const { error: errContactos } = await supabase
-    .from("alumno_contactos")
-    .upsert(
-      contactosPendientes.map((c) => ({ ...c, alumno_id: alumnoId })),
-      { onConflict: "alumno_id,persona_id,rol" },
-    );
-  if (errContactos) {
-    return { error: `No se pudieron guardar los contactos: ${errContactos.message}` };
+  if (contactosPendientes.length > 0) {
+    const { error: errContactos } = await supabase
+      .from("alumno_contactos")
+      .upsert(
+        contactosPendientes.map((c) => ({ ...c, alumno_id: alumnoId })),
+        { onConflict: "alumno_id,persona_id,rol" },
+      );
+    if (errContactos) {
+      return { error: `No se pudieron guardar los contactos: ${errContactos.message}` };
+    }
   }
 
   const autorizados = sol.autorizados_retiro_json ?? [];

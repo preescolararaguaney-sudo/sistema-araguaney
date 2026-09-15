@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRol } from "@/lib/auth";
-import { getSolicitudes } from "@/lib/queries/solicitudes";
+import { getSolicitudes, contactoVisible } from "@/lib/queries/solicitudes";
 import { formatFechaHora } from "@/lib/format";
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -58,7 +58,7 @@ export default async function SolicitudesPage({
           <thead>
             <tr className="border-b border-stone-200 text-left text-xs uppercase tracking-wide text-stone-500">
               <th className="px-4 py-2 font-medium">Alumno</th>
-              <th className="px-4 py-2 font-medium">Representante</th>
+              <th className="px-4 py-2 font-medium">Contacto</th>
               <th className="px-4 py-2 font-medium">Enviada</th>
               <th className="px-4 py-2 font-medium">Estado</th>
               <th className="px-4 py-2 font-medium"></th>
@@ -68,7 +68,7 @@ export default async function SolicitudesPage({
             {solicitudes.map((s) => (
               <tr key={s.id} className="border-b border-stone-100 last:border-0">
                 <td className="px-4 py-2">{s.alumno_nombre} {s.alumno_apellido}</td>
-                <td className="px-4 py-2">{s.representante_nombre} {s.representante_apellido}</td>
+                <td className="px-4 py-2">{contactoVisible(s)}</td>
                 <td className="px-4 py-2">{formatFechaHora(s.creado_en)}</td>
                 <td className="px-4 py-2">{ESTADO_LABEL[s.estado] ?? s.estado}</td>
                 <td className="px-4 py-2">

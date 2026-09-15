@@ -72,7 +72,7 @@ export function InscripcionForm({
             defaultValue={alumnoExistente?.fecha_nacimiento ?? undefined}
           />
           <Campo
-            label="Teléfono de contacto rápido"
+            label="Teléfono de contacto rápido prioritario"
             name="telefono_contacto_rapido"
             defaultValue={alumnoExistente?.telefono_contacto_rapido ?? undefined}
           />
@@ -81,24 +81,6 @@ export function InscripcionForm({
 
       <DatosPadreMadre prefix="madre" titulo="Datos de la madre" />
       <DatosPadreMadre prefix="padre" titulo="Datos del padre" />
-
-      <Fieldset titulo="Representante de pago" descripcion="Quien recibirá los recibos de pago y autoriza este formulario.">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Select label="El representante de pago es" name="representante_es" required defaultValue="madre">
-            <option value="madre">La madre</option>
-            <option value="padre">El padre</option>
-            <option value="otro">Otra persona</option>
-          </Select>
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Campo label="Nombre" name="representante_nombre" />
-          <Campo label="Apellido" name="representante_apellido" />
-          <Campo label="Cédula de identidad" name="representante_cedula" placeholder="V-12345678" />
-          <Campo label="Teléfono" name="representante_telefono" required={false} />
-          <Campo label="Email" name="representante_email" type="email" required={false} />
-          <Campo label="Dirección" name="representante_direccion" required={false} />
-        </div>
-      </Fieldset>
 
       <Fieldset
         titulo="Personas autorizadas a retirar al niño(a)"
@@ -247,34 +229,6 @@ function Campo({
         defaultValue={defaultValue}
         className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
       />
-    </label>
-  );
-}
-
-function Select({
-  label,
-  name,
-  required = true,
-  defaultValue = "",
-  children,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-  defaultValue?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm font-medium text-stone-700">{label}</span>
-      <select
-        name={name}
-        required={required}
-        defaultValue={defaultValue}
-        className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
-      >
-        {children}
-      </select>
     </label>
   );
 }

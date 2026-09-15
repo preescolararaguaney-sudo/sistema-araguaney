@@ -26,16 +26,9 @@ export async function crearSolicitud(
 
   const alumnoNombre = texto(formData, "alumno_nombre");
   const alumnoApellido = texto(formData, "alumno_apellido");
-  const representanteEs = String(formData.get("representante_es") ?? "madre");
-  const representanteNombre = texto(formData, "representante_nombre");
-  const representanteApellido = texto(formData, "representante_apellido");
-  const representanteCedula = texto(formData, "representante_cedula");
 
   if (!alumnoNombre || !alumnoApellido) {
     return { error: "Completa el nombre y apellido del alumno." };
-  }
-  if (!representanteNombre || !representanteApellido || !representanteCedula) {
-    return { error: "Completa nombre, apellido y cédula del representante que autoriza." };
   }
 
   let autorizados: Autorizado[] = [];
@@ -108,14 +101,6 @@ export async function crearSolicitud(
       : null,
     padre_horario_con_nino: texto(formData, "padre_horario_con_nino"),
     padre_motivo_institucion: texto(formData, "padre_motivo_institucion"),
-
-    representante_es: representanteEs,
-    representante_nombre: representanteNombre,
-    representante_apellido: representanteApellido,
-    representante_cedula: representanteCedula,
-    representante_telefono: texto(formData, "representante_telefono"),
-    representante_email: texto(formData, "representante_email"),
-    representante_direccion: texto(formData, "representante_direccion"),
 
     datos_medicos: texto(formData, "datos_medicos"),
     alergias: texto(formData, "alergias"),

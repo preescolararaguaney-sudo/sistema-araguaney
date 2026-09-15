@@ -86,14 +86,18 @@ export default async function SolicitudDetallePage({
       <SeccionPersona titulo="Datos de la madre" sol={sol} prefix="madre" />
       <SeccionPersona titulo="Datos del padre" sol={sol} prefix="padre" />
 
-      <Seccion titulo="Representante de pago">
-        <Campo label="Es" valor={String(sol.representante_es ?? "")} />
-        <Campo label="Nombre" valor={`${sol.representante_nombre ?? ""} ${sol.representante_apellido ?? ""}`} />
-        <Campo label="Cédula" valor={sol.representante_cedula} />
-        <Campo label="Teléfono" valor={sol.representante_telefono} />
-        <Campo label="Email" valor={sol.representante_email} />
-        <Campo label="Dirección" valor={sol.representante_direccion} />
-      </Seccion>
+      {/* El formulario público ya no pide representante de pago; esta
+          sección solo aparece si una solicitud (vieja, o completada a
+          mano) sí lo trae. */}
+      {Boolean(sol.representante_cedula) && (
+        <Seccion titulo="Representante de pago">
+          <Campo label="Nombre" valor={`${sol.representante_nombre ?? ""} ${sol.representante_apellido ?? ""}`} />
+          <Campo label="Cédula" valor={sol.representante_cedula} />
+          <Campo label="Teléfono" valor={sol.representante_telefono} />
+          <Campo label="Email" valor={sol.representante_email} />
+          <Campo label="Dirección" valor={sol.representante_direccion} />
+        </Seccion>
+      )}
 
       <Seccion titulo="Personas autorizadas a retirar">
         {sol.autorizados_retiro_json.length === 0 ? (
