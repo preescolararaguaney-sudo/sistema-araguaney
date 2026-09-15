@@ -9,6 +9,22 @@ export type DatosPersona = {
   apellido: string;
   telefono?: string | null;
   email?: string | null;
+  // Campos de la planilla de inscripción (madre/padre): opcionales porque
+  // la creación manual desde /alumnos/nuevo no los pide.
+  lugar_nacimiento?: string | null;
+  fecha_nacimiento?: string | null;
+  estado_civil?: string | null;
+  religion?: string | null;
+  grado_instruccion?: string | null;
+  empresa_donde_labora?: string | null;
+  direccion_trabajo?: string | null;
+  jefe_inmediato?: string | null;
+  departamento_laboral?: string | null;
+  antiguedad_laboral?: string | null;
+  sueldo?: string | null;
+  horario_trabajo?: string | null;
+  telefono_habitacion?: string | null;
+  telefono_otro?: string | null;
 };
 
 /**
@@ -30,6 +46,31 @@ export async function findOrCreatePersona(
     .eq("cedula", cedula)
     .maybeSingle();
 
+  // Solo se incluyen los campos extendidos que este llamador realmente pasó:
+  // así una llamada que no los conoce (ej. la creación manual desde
+  // /alumnos/nuevo) nunca borra datos laborales/vivienda que ya existían en
+  // una persona reutilizada por cédula (ej. cargados antes vía una solicitud
+  // de inscripción aprobada).
+  const extendidos = {
+    lugar_nacimiento: datos.lugar_nacimiento,
+    fecha_nacimiento: datos.fecha_nacimiento,
+    estado_civil: datos.estado_civil,
+    religion: datos.religion,
+    grado_instruccion: datos.grado_instruccion,
+    empresa_donde_labora: datos.empresa_donde_labora,
+    direccion_trabajo: datos.direccion_trabajo,
+    jefe_inmediato: datos.jefe_inmediato,
+    departamento_laboral: datos.departamento_laboral,
+    antiguedad_laboral: datos.antiguedad_laboral,
+    sueldo: datos.sueldo,
+    horario_trabajo: datos.horario_trabajo,
+    telefono_habitacion: datos.telefono_habitacion,
+    telefono_otro: datos.telefono_otro,
+  };
+  const extendidosPasados = Object.fromEntries(
+    Object.entries(extendidos).filter(([, v]) => v !== undefined),
+  );
+
   if (existente) {
     await supabase
       .from("personas")
@@ -37,10 +78,15 @@ export async function findOrCreatePersona(
         nombre: datos.nombre,
         apellido: datos.apellido,
         telefono: datos.telefono ?? null,
+        ...extendidosPasados,
       })
       .eq("id", existente.id);
     return { id: existente.id };
   }
+
+  const extendidosConDefecto = Object.fromEntries(
+    Object.keys(extendidos).map((k) => [k, extendidosPasados[k] ?? null]),
+  );
 
   const { data: nueva, error } = await supabase
     .from("personas")
@@ -50,6 +96,7 @@ export async function findOrCreatePersona(
       apellido: datos.apellido,
       telefono: datos.telefono ?? null,
       email: datos.email ?? null,
+      ...extendidosConDefecto,
     })
     .select("id")
     .single();

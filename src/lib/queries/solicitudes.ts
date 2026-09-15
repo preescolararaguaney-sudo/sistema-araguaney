@@ -1,0 +1,51 @@
+import "server-only";
+import { createClient } from "@/lib/supabase/server";
+
+export type SolicitudResumen = {
+  id: string;
+  alumno_nombre: string;
+  alumno_apellido: string;
+  representante_nombre: string;
+  representante_apellido: string;
+  estado: "pendiente" | "aprobada" | "rechazada";
+  creado_en: string;
+};
+
+export async function getSolicitudes(estado: string): Promise<SolicitudResumen[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("solicitudes_inscripcion")
+    .select(
+      "id, alumno_nombre, alumno_apellido, representante_nombre, representante_apellido, estado, creado_en",
+    )
+    .order("creado_en", { ascending: false });
+
+  if (estado) query = query.eq("estado", estado);
+
+  const { data } = await query;
+  return (data as SolicitudResumen[]) ?? [];
+}
+
+// Fila completa de la tabla: se usa tal cual en la pantalla de detalle/aprobación.
+export type SolicitudDetalle = Record<string, unknown> & {
+  id: string;
+  estado: "pendiente" | "aprobada" | "rechazada";
+  autorizados_retiro_json: {
+    nombre: string;
+    apellido: string;
+    cedula: string;
+    telefono: string;
+    parentesco: string;
+  }[];
+};
+
+export async function getSolicitudDetalle(id: string): Promise<SolicitudDetalle | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("solicitudes_inscripcion")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  return data as SolicitudDetalle | null;
+}

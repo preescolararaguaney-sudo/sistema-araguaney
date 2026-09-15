@@ -151,9 +151,26 @@ create table personas (
   cedula text unique,
   nombre text not null,
   apellido text not null,
-  telefono text,
+  telefono text, -- teléfono celular
   email text,
   direccion text,
+  -- Campos de la planilla de inscripción en papel (datos de la madre/del
+  -- padre): pertenecen a la persona, no a la relación con un alumno en
+  -- particular, porque no cambian de un hijo a otro.
+  lugar_nacimiento text,
+  fecha_nacimiento date,
+  estado_civil text,
+  religion text,
+  grado_instruccion text,
+  empresa_donde_labora text,
+  direccion_trabajo text,
+  jefe_inmediato text,
+  departamento_laboral text,
+  antiguedad_laboral text,
+  sueldo text,
+  horario_trabajo text,
+  telefono_habitacion text,
+  telefono_otro text,
   creado_en timestamptz not null default now()
 );
 
@@ -166,6 +183,18 @@ create table alumnos (
   fecha_nacimiento date,
   datos_medicos text,
   alergias text,
+  -- Campos de la planilla de inscripción en papel (datos del alumno / vivienda).
+  lugar_nacimiento text,
+  direccion text,
+  tipo_vivienda text check (tipo_vivienda in ('casa', 'apartamento', 'otros')),
+  condicion_vivienda text check (condicion_vivienda in ('propia', 'alquilada', 'invasion', 'otros')),
+  estado_vivienda text check (estado_vivienda in ('buen_estado', 'regular', 'riesgo')),
+  telefono_contacto_rapido text,
+  -- Autorización específica de la planilla para suministrar un medicamento
+  -- en caso de fiebre/malestar general (distinto de datos_medicos/alergias,
+  -- que son antecedentes médicos generales).
+  medicamento_autorizado text,
+  dosis_medicamento_autorizado text,
   creado_en timestamptz not null default now()
 );
 
@@ -181,6 +210,13 @@ create table alumno_contactos (
   persona_id uuid not null references personas(id) on delete restrict,
   rol rol_contacto_alumno not null,
   es_responsable_pago boolean not null default false,
+  -- Campos de la planilla en papel que son propios de la relación
+  -- padre/madre-con-este-alumno (no de la persona en general): la misma
+  -- persona podría, en teoría, responder distinto para otro hijo.
+  contacto_emergencia text,
+  vive_con_nino boolean,
+  horario_con_nino text,
+  motivo_seleccion_institucion text,
   creado_en timestamptz not null default now(),
   unique (alumno_id, persona_id, rol)
 );
@@ -234,6 +270,114 @@ create table alumno_precios_pactados (
 );
 
 create index idx_alumno_precios_pactados on alumno_precios_pactados (matricula_id, vigente_desde_mes desc);
+
+-- ============================================================================
+-- 7b. SOLICITUDES DE INSCRIPCIÓN (formulario público, sin login)
+-- ============================================================================
+-- El representante llena esta planilla digital desde un link público (sin
+-- autenticarse). Queda en estado 'pendiente' hasta que directora/administración
+-- la revisa y la aprueba: solo al aprobar se crean de verdad las filas en
+-- `alumnos`, `personas`, `alumno_contactos`, `alumno_autorizados_retiro`,
+-- `matriculas` (y su plan de pagos). Es una tabla ancha y desnormalizada
+-- a propósito: es un formulario de entrada de un solo uso por solicitud,
+-- no un modelo de datos que se consulte ni se relacione después.
+
+create type estado_solicitud as enum ('pendiente', 'aprobada', 'rechazada');
+
+create table solicitudes_inscripcion (
+  id uuid primary key default gen_random_uuid(),
+  anio_escolar_id uuid references anios_escolares(id),
+
+  -- Datos del alumno
+  alumno_nombre text not null,
+  alumno_apellido text not null,
+  alumno_fecha_nacimiento date,
+  alumno_lugar_nacimiento text,
+  alumno_direccion text,
+  alumno_tipo_vivienda text,
+  alumno_condicion_vivienda text,
+  alumno_estado_vivienda text,
+  telefono_contacto_rapido text,
+
+  -- Datos de la madre
+  madre_nombre text,
+  madre_apellido text,
+  madre_fecha_nacimiento date,
+  madre_lugar_nacimiento text,
+  madre_cedula text,
+  madre_estado_civil text,
+  madre_religion text,
+  madre_empresa text,
+  madre_direccion_trabajo text,
+  madre_jefe_inmediato text,
+  madre_departamento text,
+  madre_antiguedad text,
+  madre_sueldo text,
+  madre_horario text,
+  madre_grado_instruccion text,
+  madre_telefono_celular text,
+  madre_telefono_hab text,
+  madre_telefono_otro text,
+  madre_contacto_emergencia text,
+  madre_vive_con_nino boolean,
+  madre_horario_con_nino text,
+  madre_motivo_institucion text,
+
+  -- Datos del padre (mismos campos que la madre)
+  padre_nombre text,
+  padre_apellido text,
+  padre_fecha_nacimiento date,
+  padre_lugar_nacimiento text,
+  padre_cedula text,
+  padre_estado_civil text,
+  padre_religion text,
+  padre_empresa text,
+  padre_direccion_trabajo text,
+  padre_jefe_inmediato text,
+  padre_departamento text,
+  padre_antiguedad text,
+  padre_sueldo text,
+  padre_horario text,
+  padre_grado_instruccion text,
+  padre_telefono_celular text,
+  padre_telefono_hab text,
+  padre_telefono_otro text,
+  padre_contacto_emergencia text,
+  padre_vive_con_nino boolean,
+  padre_horario_con_nino text,
+  padre_motivo_institucion text,
+
+  -- Representante de pago: puede ser la madre, el padre u otra persona
+  representante_es text not null default 'madre' check (representante_es in ('madre', 'padre', 'otro')),
+  representante_nombre text,
+  representante_apellido text,
+  representante_cedula text,
+  representante_telefono text,
+  representante_email text,
+  representante_direccion text,
+
+  -- Salud y autorización de retiro (planilla de autorización)
+  datos_medicos text,
+  alergias text,
+  medicamento_autorizado text,
+  dosis_medicamento_autorizado text,
+  -- [{nombre, apellido, cedula, telefono, parentesco}, ...]
+  autorizados_retiro_json jsonb not null default '[]'::jsonb,
+
+  estado estado_solicitud not null default 'pendiente',
+  revisado_por uuid references perfiles(id),
+  revisado_en timestamptz,
+  motivo_rechazo text,
+  alumno_creado_id uuid references alumnos(id), -- se llena al aprobar
+
+  creado_en timestamptz not null default now(),
+  constraint chk_solicitud_revision check (
+    (estado = 'pendiente' and revisado_por is null and revisado_en is null)
+    or (estado <> 'pendiente' and revisado_por is not null and revisado_en is not null)
+  )
+);
+
+create index idx_solicitudes_estado on solicitudes_inscripcion (estado, creado_en);
 
 -- ============================================================================
 -- 8. PLAN DE PAGOS (cuotas)
@@ -818,6 +962,7 @@ alter table alumno_contactos enable row level security;
 alter table alumno_autorizados_retiro enable row level security;
 alter table matriculas enable row level security;
 alter table alumno_precios_pactados enable row level security;
+alter table solicitudes_inscripcion enable row level security;
 alter table plan_pago_items enable row level security;
 alter table pagos enable row level security;
 alter table pago_aplicaciones enable row level security;
@@ -884,6 +1029,17 @@ create policy autorizados_admin_todo on alumno_autorizados_retiro for all
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
 
 create policy matriculas_admin_todo on matriculas for all
+  using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
+
+-- --- Solicitudes de inscripción: cualquiera (incluso sin login) puede
+--     enviar una solicitud; solo directora/administración pueden verlas,
+--     revisarlas o aprobarlas. Sin UPDATE/DELETE para el rol anónimo. ---
+create policy solicitudes_insercion_publica on solicitudes_inscripcion for insert
+  to anon, authenticated
+  with check (estado = 'pendiente' and revisado_por is null);
+create policy solicitudes_admin_gestion on solicitudes_inscripcion for select
+  using (auth_rol() in ('directora', 'administracion'));
+create policy solicitudes_admin_actualiza on solicitudes_inscripcion for update
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
 
 -- --- Financiero (cobranza): solo directora y administración ---
