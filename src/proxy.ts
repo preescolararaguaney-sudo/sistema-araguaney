@@ -33,9 +33,12 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-  // Formulario público de inscripción: lo llena el representante desde un
-  // link, sin iniciar sesión.
-  const isRutaPublica = request.nextUrl.pathname.startsWith("/inscripcion");
+  // Rutas públicas, sin login: /inscripcion (el representante llena la
+  // planilla) y /pagos-publico (la persona encargada de cobrar registra
+  // pagos sin necesitar usuario/contraseña).
+  const isRutaPublica =
+    request.nextUrl.pathname.startsWith("/inscripcion") ||
+    request.nextUrl.pathname.startsWith("/pagos-publico");
 
   if (!user && !isAuthRoute && !isRutaPublica) {
     const url = request.nextUrl.clone();

@@ -456,9 +456,16 @@ create table pagos (
   comprobante_url text,
   anulado boolean not null default false,
   motivo_anulacion text,
-  registrado_por uuid not null references perfiles(id),
+  -- Nullable: un pago registrado desde /pagos-publico (sin login, para la
+  -- persona encargada de cobrar) no tiene un perfil real que lo respalde;
+  -- en ese caso se guarda el nombre tecleado en `registrado_por_nombre` en
+  -- vez del id. Los pagos registrados desde dentro del sistema siguen
+  -- llenando `registrado_por` como siempre.
+  registrado_por uuid references perfiles(id),
+  registrado_por_nombre text,
   creado_en timestamptz not null default now(),
-  constraint chk_anulacion_con_motivo check (not anulado or motivo_anulacion is not null)
+  constraint chk_anulacion_con_motivo check (not anulado or motivo_anulacion is not null),
+  constraint chk_pago_tiene_registrador check (registrado_por is not null or registrado_por_nombre is not null)
 );
 
 create index idx_pagos_matricula on pagos (matricula_id);
@@ -825,6 +832,8 @@ comment on function generar_plan_pago is 'Genera matrícula + 11 mensualidades +
 create or replace function trg_fn_recalcular_vencimientos_agosto()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   if new.fecha_cierre is distinct from old.fecha_cierre then
@@ -897,6 +906,8 @@ create trigger trg_actualizar_estado_cuota_delete
 create or replace function trg_fn_anular_pago()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   if new.anulado and not old.anulado then

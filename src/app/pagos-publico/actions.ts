@@ -1,22 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireRol } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
-import { hoyCaracas } from "@/lib/format";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { procesarPago } from "@/lib/pagos";
+import { hoyCaracas } from "@/lib/format";
 
 export type ActionState = { error?: string } | undefined;
 
 export type TasaBcvResultado = { tasa: number; fecha: string } | { error: string };
 
-// El BCV no tiene API oficial (y su sitio tiene un certificado que la mayoría
-// de los clientes no pueden verificar), así que se consulta un espejo
-// conocido de la tasa oficial. Es un mecanismo opcional de conveniencia: el
-// usuario siempre puede editar la tasa a mano antes de confirmar el pago.
-export async function obtenerTasaBcvActual(): Promise<TasaBcvResultado> {
-  const perfil = await requireRol(["directora", "administracion"]);
-  const supabase = await createClient();
+export async function obtenerTasaBcvActualPublico(): Promise<TasaBcvResultado> {
+  const admin = createAdminClient();
 
   let tasa: number;
   try {
@@ -33,12 +27,9 @@ export async function obtenerTasaBcvActual(): Promise<TasaBcvResultado> {
 
   const fecha = hoyCaracas();
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("tasas_bcv")
-    .upsert(
-      { fecha, tasa, fuente: "bcv.org.ve (vía dolarapi.com)", creado_por: perfil.id },
-      { onConflict: "fecha" },
-    );
+    .upsert({ fecha, tasa, fuente: "bcv.org.ve (vía dolarapi.com)" }, { onConflict: "fecha" });
 
   if (error) {
     return { error: `Se obtuvo la tasa (${tasa}) pero no se pudo guardar: ${error.message}` };
@@ -47,14 +38,18 @@ export async function obtenerTasaBcvActual(): Promise<TasaBcvResultado> {
   return { tasa, fecha };
 }
 
-export async function registrarPago(
+export async function registrarPagoPublico(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const perfil = await requireRol(["directora", "administracion"]);
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  const resultado = await procesarPago(supabase, {
+  const cobradoPor = String(formData.get("cobrado_por") ?? "").trim();
+  if (!cobradoPor) {
+    return { error: "Escribe tu nombre en \"Cobrado por\" antes de registrar el pago." };
+  }
+
+  const resultado = await procesarPago(admin, {
     matriculaId: String(formData.get("matricula_id") ?? ""),
     fechaPago: String(formData.get("fecha_pago") ?? ""),
     tasaBcv: Number(formData.get("tasa_bcv")),
@@ -63,10 +58,10 @@ export async function registrarPago(
     metodo: String(formData.get("metodo") ?? ""),
     referencia: String(formData.get("referencia") ?? "").trim(),
     comprobanteUrl: String(formData.get("comprobante_url") ?? "").trim(),
-    registradoPorPerfilId: perfil.id,
+    registradoPorNombre: cobradoPor,
   });
 
   if ("error" in resultado) return resultado;
 
-  redirect(`/cobranza/pagos/${resultado.pagoId}/recibo`);
+  redirect(`/pagos-publico/recibo/${resultado.pagoId}`);
 }
