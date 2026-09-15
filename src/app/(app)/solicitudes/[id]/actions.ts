@@ -26,12 +26,6 @@ export async function aprobarSolicitud(
   const supabase = await createClient();
 
   const id = String(formData.get("solicitud_id") ?? "");
-  const aulaId = String(formData.get("aula_id") ?? "");
-  const anioEscolarId = String(formData.get("anio_escolar_id") ?? "");
-  const estadoInicial = String(formData.get("estado") ?? "preinscrito");
-  if (!aulaId || !anioEscolarId) {
-    return { error: "Selecciona el año escolar y el aula." };
-  }
 
   const { data: solData, error: errSol } = await supabase
     .from("solicitudes_inscripcion")
@@ -45,28 +39,96 @@ export async function aprobarSolicitud(
     return { error: "La solicitud no existe o ya fue revisada." };
   }
 
-  const { data: alumno, error: errAlumno } = await supabase
-    .from("alumnos")
-    .insert({
-      nombre: sol.alumno_nombre,
-      apellido: sol.alumno_apellido,
-      fecha_nacimiento: sol.alumno_fecha_nacimiento,
-      lugar_nacimiento: sol.alumno_lugar_nacimiento,
-      direccion: sol.alumno_direccion,
-      tipo_vivienda: sol.alumno_tipo_vivienda,
-      condicion_vivienda: sol.alumno_condicion_vivienda,
-      estado_vivienda: sol.alumno_estado_vivienda,
-      telefono_contacto_rapido: sol.telefono_contacto_rapido,
-      datos_medicos: sol.datos_medicos,
-      alergias: sol.alergias,
-      medicamento_autorizado: sol.medicamento_autorizado,
-      dosis_medicamento_autorizado: sol.dosis_medicamento_autorizado,
-    })
-    .select("id")
-    .single();
+  let alumnoId: string;
 
-  if (errAlumno || !alumno) {
-    return { error: `No se pudo crear el alumno: ${errAlumno?.message}` };
+  if (sol.alumno_existente_id) {
+    // Completa/corrige datos de un alumno ya inscrito (ej. importado en
+    // bloque desde la nómina): solo se actualizan los campos que esta
+    // solicitud realmente trae, para no borrar con null algo que ya
+    // estaba bien cargado.
+    alumnoId = sol.alumno_existente_id as string;
+    const actualizacion: Record<string, unknown> = {};
+    if (sol.alumno_nombre) actualizacion.nombre = sol.alumno_nombre;
+    if (sol.alumno_apellido) actualizacion.apellido = sol.alumno_apellido;
+    if (sol.alumno_fecha_nacimiento) actualizacion.fecha_nacimiento = sol.alumno_fecha_nacimiento;
+    if (sol.alumno_lugar_nacimiento) actualizacion.lugar_nacimiento = sol.alumno_lugar_nacimiento;
+    if (sol.alumno_direccion) actualizacion.direccion = sol.alumno_direccion;
+    if (sol.alumno_tipo_vivienda) actualizacion.tipo_vivienda = sol.alumno_tipo_vivienda;
+    if (sol.alumno_condicion_vivienda) actualizacion.condicion_vivienda = sol.alumno_condicion_vivienda;
+    if (sol.alumno_estado_vivienda) actualizacion.estado_vivienda = sol.alumno_estado_vivienda;
+    if (sol.telefono_contacto_rapido) actualizacion.telefono_contacto_rapido = sol.telefono_contacto_rapido;
+    if (sol.datos_medicos) actualizacion.datos_medicos = sol.datos_medicos;
+    if (sol.alergias) actualizacion.alergias = sol.alergias;
+    if (sol.medicamento_autorizado) actualizacion.medicamento_autorizado = sol.medicamento_autorizado;
+    if (sol.dosis_medicamento_autorizado) {
+      actualizacion.dosis_medicamento_autorizado = sol.dosis_medicamento_autorizado;
+    }
+
+    if (Object.keys(actualizacion).length > 0) {
+      const { error: errUpdate } = await supabase
+        .from("alumnos")
+        .update(actualizacion)
+        .eq("id", alumnoId);
+      if (errUpdate) return { error: `No se pudo actualizar el alumno: ${errUpdate.message}` };
+    }
+  } else {
+    const aulaId = String(formData.get("aula_id") ?? "");
+    const anioEscolarId = String(formData.get("anio_escolar_id") ?? "");
+    const estadoInicial = String(formData.get("estado") ?? "preinscrito");
+    if (!aulaId || !anioEscolarId) {
+      return { error: "Selecciona el año escolar y el aula." };
+    }
+
+    const { data: alumno, error: errAlumno } = await supabase
+      .from("alumnos")
+      .insert({
+        nombre: sol.alumno_nombre,
+        apellido: sol.alumno_apellido,
+        fecha_nacimiento: sol.alumno_fecha_nacimiento,
+        lugar_nacimiento: sol.alumno_lugar_nacimiento,
+        direccion: sol.alumno_direccion,
+        tipo_vivienda: sol.alumno_tipo_vivienda,
+        condicion_vivienda: sol.alumno_condicion_vivienda,
+        estado_vivienda: sol.alumno_estado_vivienda,
+        telefono_contacto_rapido: sol.telefono_contacto_rapido,
+        datos_medicos: sol.datos_medicos,
+        alergias: sol.alergias,
+        medicamento_autorizado: sol.medicamento_autorizado,
+        dosis_medicamento_autorizado: sol.dosis_medicamento_autorizado,
+      })
+      .select("id")
+      .single();
+
+    if (errAlumno || !alumno) {
+      return { error: `No se pudo crear el alumno: ${errAlumno?.message}` };
+    }
+    alumnoId = alumno.id;
+
+    const { data: matricula, error: errMatricula } = await supabase
+      .from("matriculas")
+      .insert({
+        alumno_id: alumnoId,
+        anio_escolar_id: anioEscolarId,
+        aula_id: aulaId,
+        estado: estadoInicial,
+      })
+      .select("id")
+      .single();
+
+    if (errMatricula || !matricula) {
+      return { error: `No se pudo crear la matrícula: ${errMatricula?.message}` };
+    }
+
+    if (estadoInicial === "inscrito") {
+      const { error: errPlan } = await supabase.rpc("generar_plan_pago", {
+        p_matricula_id: matricula.id,
+      });
+      if (errPlan) {
+        return {
+          error: `El alumno se creó, pero falló la generación del plan de pagos: ${errPlan.message}`,
+        };
+      }
+    }
   }
 
   type ContactoPendiente = {
@@ -164,9 +226,16 @@ export async function aprobarSolicitud(
     motivo_seleccion_institucion: null,
   });
 
+  // upsert (no insert): si esta solicitud está completando un alumno ya
+  // inscrito y el mismo representante/padre/madre ya había sido cargado
+  // antes (misma cédula, mismo rol), se actualiza en vez de fallar por la
+  // restricción unique(alumno_id, persona_id, rol).
   const { error: errContactos } = await supabase
     .from("alumno_contactos")
-    .insert(contactosPendientes.map((c) => ({ ...c, alumno_id: alumno.id })));
+    .upsert(
+      contactosPendientes.map((c) => ({ ...c, alumno_id: alumnoId })),
+      { onConflict: "alumno_id,persona_id,rol" },
+    );
   if (errContactos) {
     return { error: `No se pudieron guardar los contactos: ${errContactos.message}` };
   }
@@ -182,39 +251,16 @@ export async function aprobarSolicitud(
     });
     if ("error" in r) return { error: `Autorizado a retirar (${a.nombre}): ${r.error}` };
 
-    const { error: errAutorizado } = await supabase.from("alumno_autorizados_retiro").insert({
-      alumno_id: alumno.id,
-      persona_id: r.id,
-      parentesco: a.parentesco || null,
-    });
+    const { error: errAutorizado } = await supabase.from("alumno_autorizados_retiro").upsert(
+      {
+        alumno_id: alumnoId,
+        persona_id: r.id,
+        parentesco: a.parentesco || null,
+      },
+      { onConflict: "alumno_id,persona_id" },
+    );
     if (errAutorizado) {
       return { error: `No se pudo guardar el autorizado ${a.nombre}: ${errAutorizado.message}` };
-    }
-  }
-
-  const { data: matricula, error: errMatricula } = await supabase
-    .from("matriculas")
-    .insert({
-      alumno_id: alumno.id,
-      anio_escolar_id: anioEscolarId,
-      aula_id: aulaId,
-      estado: estadoInicial,
-    })
-    .select("id")
-    .single();
-
-  if (errMatricula || !matricula) {
-    return { error: `No se pudo crear la matrícula: ${errMatricula?.message}` };
-  }
-
-  if (estadoInicial === "inscrito") {
-    const { error: errPlan } = await supabase.rpc("generar_plan_pago", {
-      p_matricula_id: matricula.id,
-    });
-    if (errPlan) {
-      return {
-        error: `El alumno se creó, pero falló la generación del plan de pagos: ${errPlan.message}`,
-      };
     }
   }
 
@@ -224,14 +270,16 @@ export async function aprobarSolicitud(
       estado: "aprobada",
       revisado_por: perfil.id,
       revisado_en: new Date().toISOString(),
-      alumno_creado_id: alumno.id,
+      alumno_creado_id: alumnoId,
     })
     .eq("id", id);
   if (errSolUpdate) {
-    return { error: `El alumno se creó, pero no se pudo marcar la solicitud como aprobada: ${errSolUpdate.message}` };
+    return {
+      error: `Los datos se guardaron, pero no se pudo marcar la solicitud como aprobada: ${errSolUpdate.message}`,
+    };
   }
 
-  redirect(`/alumnos/${alumno.id}`);
+  redirect(`/alumnos/${alumnoId}`);
 }
 
 export async function rechazarSolicitud(

@@ -54,6 +54,16 @@ export default async function SolicitudDetallePage({
         </p>
       </div>
 
+      {Boolean(sol.alumno_existente_id) && (
+        <div className="rounded-md bg-sky-50 px-4 py-3 text-sm text-sky-800">
+          Esta solicitud completa los datos de un alumno ya inscrito.{" "}
+          <Link href={`/alumnos/${sol.alumno_existente_id}`} className="underline">
+            Ver su ficha actual
+          </Link>
+          .
+        </div>
+      )}
+
       {sol.estado === "rechazada" && Boolean(sol.motivo_rechazo) && (
         <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-800">
           Motivo del rechazo: {String(sol.motivo_rechazo)}
@@ -127,6 +137,7 @@ export default async function SolicitudDetallePage({
             solicitudId={sol.id}
             anioEscolarId={anioEscolar?.id ?? ""}
             aulas={aulas ?? []}
+            esAlumnoExistente={Boolean(sol.alumno_existente_id)}
           />
           <RechazarForm solicitudId={sol.id} />
         </div>

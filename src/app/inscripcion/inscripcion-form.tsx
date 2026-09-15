@@ -19,7 +19,21 @@ const AUTORIZADO_VACIO: Autorizado = {
   parentesco: "",
 };
 
-export function InscripcionForm({ anioEscolarId }: { anioEscolarId: string }) {
+type AlumnoExistente = {
+  id: string;
+  nombre: string;
+  apellido: string;
+  fecha_nacimiento: string | null;
+  telefono_contacto_rapido: string | null;
+};
+
+export function InscripcionForm({
+  anioEscolarId,
+  alumnoExistente,
+}: {
+  anioEscolarId: string;
+  alumnoExistente?: AlumnoExistente | null;
+}) {
   const [state, formAction, pending] = useActionState(crearSolicitud, undefined);
   const [autorizados, setAutorizados] = useState<Autorizado[]>([]);
 
@@ -31,13 +45,37 @@ export function InscripcionForm({ anioEscolarId }: { anioEscolarId: string }) {
     <form action={formAction} className="flex flex-col gap-6">
       <input type="hidden" name="anio_escolar_id" value={anioEscolarId} />
       <input type="hidden" name="autorizados_json" value={JSON.stringify(autorizados)} />
+      {alumnoExistente && (
+        <input type="hidden" name="alumno_existente_id" value={alumnoExistente.id} />
+      )}
 
-      <Fieldset titulo="Datos del alumno">
+      <Fieldset
+        titulo="Datos del alumno"
+        descripcion={alumnoExistente ? "Ya tenemos estos datos; corrígelos si hace falta." : undefined}
+      >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Campo label="Primer nombre y segundo nombre" name="alumno_nombre" />
-          <Campo label="Primer apellido y segundo apellido" name="alumno_apellido" />
-          <Campo label="Fecha de nacimiento" name="alumno_fecha_nacimiento" type="date" required={false} />
-          <Campo label="Teléfono de contacto rápido" name="telefono_contacto_rapido" />
+          <Campo
+            label="Primer nombre y segundo nombre"
+            name="alumno_nombre"
+            defaultValue={alumnoExistente?.nombre}
+          />
+          <Campo
+            label="Primer apellido y segundo apellido"
+            name="alumno_apellido"
+            defaultValue={alumnoExistente?.apellido}
+          />
+          <Campo
+            label="Fecha de nacimiento"
+            name="alumno_fecha_nacimiento"
+            type="date"
+            required={false}
+            defaultValue={alumnoExistente?.fecha_nacimiento ?? undefined}
+          />
+          <Campo
+            label="Teléfono de contacto rápido"
+            name="telefono_contacto_rapido"
+            defaultValue={alumnoExistente?.telefono_contacto_rapido ?? undefined}
+          />
         </div>
       </Fieldset>
 
@@ -143,7 +181,7 @@ export function InscripcionForm({ anioEscolarId }: { anioEscolarId: string }) {
         disabled={pending}
         className="self-start rounded-md bg-emerald-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
       >
-        {pending ? "Enviando..." : "Enviar solicitud de inscripción"}
+        {pending ? "Enviando..." : alumnoExistente ? "Enviar datos" : "Enviar solicitud de inscripción"}
       </button>
     </form>
   );
@@ -187,6 +225,7 @@ function Campo({
   type = "text",
   placeholder,
   required = true,
+  defaultValue,
   className,
 }: {
   label: string;
@@ -194,6 +233,7 @@ function Campo({
   type?: string;
   placeholder?: string;
   required?: boolean;
+  defaultValue?: string;
   className?: string;
 }) {
   return (
@@ -204,6 +244,7 @@ function Campo({
         type={type}
         placeholder={placeholder}
         required={required}
+        defaultValue={defaultValue}
         className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
       />
     </label>

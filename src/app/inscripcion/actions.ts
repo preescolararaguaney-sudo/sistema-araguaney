@@ -47,6 +47,7 @@ export async function crearSolicitud(
 
   const { error } = await supabase.from("solicitudes_inscripcion").insert({
     anio_escolar_id: texto(formData, "anio_escolar_id"),
+    alumno_existente_id: texto(formData, "alumno_existente_id"),
 
     alumno_nombre: alumnoNombre,
     alumno_apellido: alumnoApellido,

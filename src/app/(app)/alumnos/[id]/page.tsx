@@ -3,6 +3,7 @@ import { getPerfil } from "@/lib/auth";
 import { getAlumnoFicha } from "@/lib/queries/alumno-ficha";
 import { formatFecha } from "@/lib/format";
 import { EstadoForm } from "./estado-form";
+import { CopiarLinkFormulario } from "./copiar-link-form";
 
 const ROL_LABEL: Record<string, string> = {
   representante_pago: "Representante de pago",
@@ -51,6 +52,7 @@ export default async function AlumnoDetallePage({
               >
                 Editar ficha
               </Link>
+              <CopiarLinkFormulario alumnoId={ficha.id} />
               {ficha.matricula && (
                 <>
                   <Link

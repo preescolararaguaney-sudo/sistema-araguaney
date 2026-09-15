@@ -287,6 +287,12 @@ create type estado_solicitud as enum ('pendiente', 'aprobada', 'rechazada');
 create table solicitudes_inscripcion (
   id uuid primary key default gen_random_uuid(),
   anio_escolar_id uuid references anios_escolares(id),
+  -- Si viene lleno, esta solicitud NO es una inscripción nueva: es un
+  -- representante completando/corrigiendo los datos de un alumno que ya
+  -- existe (ej. importado en bloque desde la nómina del plantel, sin
+  -- representante/autorizados todavía). Al aprobar, se actualiza este
+  -- alumno y se le agregan los contactos, en vez de crear uno nuevo.
+  alumno_existente_id uuid references alumnos(id),
 
   -- Datos del alumno
   alumno_nombre text not null,
