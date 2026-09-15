@@ -37,27 +37,6 @@ export function InscripcionForm({ anioEscolarId }: { anioEscolarId: string }) {
           <Campo label="Primer nombre y segundo nombre" name="alumno_nombre" />
           <Campo label="Primer apellido y segundo apellido" name="alumno_apellido" />
           <Campo label="Fecha de nacimiento" name="alumno_fecha_nacimiento" type="date" required={false} />
-          <Campo label="Lugar de nacimiento" name="alumno_lugar_nacimiento" required={false} />
-          <Campo label="Dirección de habitación" name="alumno_direccion" required={false} className="sm:col-span-2" />
-          <Select label="Tipo de vivienda" name="alumno_tipo_vivienda" required={false}>
-            <option value="">— Selecciona —</option>
-            <option value="casa">Casa</option>
-            <option value="apartamento">Apartamento</option>
-            <option value="otros">Otros</option>
-          </Select>
-          <Select label="Condición de la vivienda" name="alumno_condicion_vivienda" required={false}>
-            <option value="">— Selecciona —</option>
-            <option value="propia">Propia</option>
-            <option value="alquilada">Alquilada</option>
-            <option value="invasion">Invasión</option>
-            <option value="otros">Otros</option>
-          </Select>
-          <Select label="La vivienda se encuentra en" name="alumno_estado_vivienda" required={false}>
-            <option value="">— Selecciona —</option>
-            <option value="buen_estado">Buen estado</option>
-            <option value="regular">Regular</option>
-            <option value="riesgo">Riesgo</option>
-          </Select>
           <Campo label="Teléfono de contacto rápido" name="telefono_contacto_rapido" />
         </div>
       </Fieldset>
@@ -177,37 +156,8 @@ function DatosPadreMadre({ prefix, titulo }: { prefix: "madre" | "padre"; titulo
         <Campo label="Nombre" name={`${prefix}_nombre`} required={false} />
         <Campo label="Apellido" name={`${prefix}_apellido`} required={false} />
         <Campo label="Cédula de identidad" name={`${prefix}_cedula`} placeholder="V-12345678" required={false} />
-        <Campo label="Fecha de nacimiento" name={`${prefix}_fecha_nacimiento`} type="date" required={false} />
-        <Campo label="Lugar de nacimiento" name={`${prefix}_lugar_nacimiento`} required={false} />
-        <Campo label="Estado civil" name={`${prefix}_estado_civil`} required={false} />
-        <Campo label="Religión" name={`${prefix}_religion`} required={false} />
-        <Campo label="Grado de instrucción" name={`${prefix}_grado_instruccion`} required={false} />
-      </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Campo label="Empresa donde labora" name={`${prefix}_empresa`} required={false} />
-        <Campo label="Dirección de trabajo" name={`${prefix}_direccion_trabajo`} required={false} />
-        <Campo label="Jefe inmediato" name={`${prefix}_jefe_inmediato`} required={false} />
-        <Campo label="Departamento" name={`${prefix}_departamento`} required={false} />
-        <Campo label="Antigüedad" name={`${prefix}_antiguedad`} required={false} />
-        <Campo label="Sueldo" name={`${prefix}_sueldo`} required={false} />
-        <Campo label="Horario de trabajo" name={`${prefix}_horario`} required={false} />
-      </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Campo label="Teléfono celular" name={`${prefix}_telefono_celular`} required={false} />
-        <Campo label="Teléfono de habitación" name={`${prefix}_telefono_hab`} required={false} />
-        <Campo label="Otro teléfono" name={`${prefix}_telefono_otro`} required={false} />
-        <Campo label="En caso de emergencia contactar a" name={`${prefix}_contacto_emergencia`} required={false} />
-        <Select label="¿Vive con el niño(a)?" name={`${prefix}_vive_con_nino`} required={false}>
-          <option value="">— Selecciona —</option>
-          <option value="si">Sí</option>
-          <option value="no">No</option>
-        </Select>
-        <Campo label="¿En qué horario está con el niño(a)?" name={`${prefix}_horario_con_nino`} required={false} />
-        <Textarea
-          label="¿Por qué seleccionó esta institución para su hijo(a)?"
-          name={`${prefix}_motivo_institucion`}
-          className="sm:col-span-2"
-        />
+        <Campo label="Sitio de empleo" name={`${prefix}_empresa`} required={false} />
       </div>
     </Fieldset>
   );

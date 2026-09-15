@@ -62,12 +62,15 @@ export default async function SolicitudDetallePage({
 
       <Seccion titulo="Datos del alumno">
         <Campo label="Fecha de nacimiento" valor={fecha(sol.alumno_fecha_nacimiento)} />
-        <Campo label="Lugar de nacimiento" valor={sol.alumno_lugar_nacimiento} />
-        <Campo label="Dirección" valor={sol.alumno_direccion} />
-        <Campo label="Tipo de vivienda" valor={sol.alumno_tipo_vivienda} />
-        <Campo label="Condición de la vivienda" valor={sol.alumno_condicion_vivienda} />
-        <Campo label="Estado de la vivienda" valor={sol.alumno_estado_vivienda} />
         <Campo label="Teléfono de contacto rápido" valor={sol.telefono_contacto_rapido} />
+        {/* Campos que el formulario público ya no pide; solo se muestran si esta solicitud sí los trae. */}
+        {Boolean(sol.alumno_lugar_nacimiento) && <Campo label="Lugar de nacimiento" valor={sol.alumno_lugar_nacimiento} />}
+        {Boolean(sol.alumno_direccion) && <Campo label="Dirección" valor={sol.alumno_direccion} />}
+        {Boolean(sol.alumno_tipo_vivienda) && <Campo label="Tipo de vivienda" valor={sol.alumno_tipo_vivienda} />}
+        {Boolean(sol.alumno_condicion_vivienda) && (
+          <Campo label="Condición de la vivienda" valor={sol.alumno_condicion_vivienda} />
+        )}
+        {Boolean(sol.alumno_estado_vivienda) && <Campo label="Estado de la vivienda" valor={sol.alumno_estado_vivienda} />}
       </Seccion>
 
       <SeccionPersona titulo="Datos de la madre" sol={sol} prefix="madre" />
@@ -192,33 +195,38 @@ function SeccionPersona({
 
   const viveConNino = sol[`${prefix}_vive_con_nino`];
 
+  // Campos que el formulario público ya no pide (se recortó al mínimo
+  // necesario para el día a día): solo se muestran si esta solicitud en
+  // particular sí trae el dato, para no llenar la pantalla de "—".
+  const extra: { label: string; valor: unknown }[] = [
+    { label: "Fecha de nacimiento", valor: fecha(sol[`${prefix}_fecha_nacimiento`]) },
+    { label: "Lugar de nacimiento", valor: sol[`${prefix}_lugar_nacimiento`] },
+    { label: "Estado civil", valor: sol[`${prefix}_estado_civil`] },
+    { label: "Religión", valor: sol[`${prefix}_religion`] },
+    { label: "Grado de instrucción", valor: sol[`${prefix}_grado_instruccion`] },
+    { label: "Dirección de trabajo", valor: sol[`${prefix}_direccion_trabajo`] },
+    { label: "Jefe inmediato", valor: sol[`${prefix}_jefe_inmediato`] },
+    { label: "Departamento", valor: sol[`${prefix}_departamento`] },
+    { label: "Antigüedad", valor: sol[`${prefix}_antiguedad`] },
+    { label: "Sueldo", valor: sol[`${prefix}_sueldo`] },
+    { label: "Horario de trabajo", valor: sol[`${prefix}_horario`] },
+    { label: "Teléfono de habitación", valor: sol[`${prefix}_telefono_hab`] },
+    { label: "Otro teléfono", valor: sol[`${prefix}_telefono_otro`] },
+    { label: "Contacto de emergencia", valor: sol[`${prefix}_contacto_emergencia`] },
+    { label: "¿Vive con el niño(a)?", valor: viveConNino === true ? "Sí" : viveConNino === false ? "No" : "" },
+    { label: "Horario con el niño(a)", valor: sol[`${prefix}_horario_con_nino`] },
+    { label: "Motivo de elección de la institución", valor: sol[`${prefix}_motivo_institucion`] },
+  ].filter((c) => c.valor);
+
   return (
     <Seccion titulo={titulo}>
       <Campo label="Nombre" valor={`${sol[`${prefix}_nombre`] ?? ""} ${sol[`${prefix}_apellido`] ?? ""}`} />
       <Campo label="Cédula" valor={sol[`${prefix}_cedula`]} />
-      <Campo label="Fecha de nacimiento" valor={fecha(sol[`${prefix}_fecha_nacimiento`])} />
-      <Campo label="Lugar de nacimiento" valor={sol[`${prefix}_lugar_nacimiento`]} />
-      <Campo label="Estado civil" valor={sol[`${prefix}_estado_civil`]} />
-      <Campo label="Religión" valor={sol[`${prefix}_religion`]} />
-      <Campo label="Grado de instrucción" valor={sol[`${prefix}_grado_instruccion`]} />
-      <Campo label="Empresa donde labora" valor={sol[`${prefix}_empresa`]} />
-      <Campo label="Dirección de trabajo" valor={sol[`${prefix}_direccion_trabajo`]} />
-      <Campo label="Jefe inmediato" valor={sol[`${prefix}_jefe_inmediato`]} />
-      <Campo label="Departamento" valor={sol[`${prefix}_departamento`]} />
-      <Campo label="Antigüedad" valor={sol[`${prefix}_antiguedad`]} />
-      <Campo label="Sueldo" valor={sol[`${prefix}_sueldo`]} />
-      <Campo label="Horario de trabajo" valor={sol[`${prefix}_horario`]} />
       <Campo label="Teléfono celular" valor={sol[`${prefix}_telefono_celular`]} />
-      <Campo label="Teléfono de habitación" valor={sol[`${prefix}_telefono_hab`]} />
-      <Campo label="Otro teléfono" valor={sol[`${prefix}_telefono_otro`]} />
-      <Campo label="Contacto de emergencia" valor={sol[`${prefix}_contacto_emergencia`]} />
-      <Campo label="¿Vive con el niño(a)?" valor={viveConNino === true ? "Sí" : viveConNino === false ? "No" : ""} />
-      <Campo label="Horario con el niño(a)" valor={sol[`${prefix}_horario_con_nino`]} />
-      <Campo
-        label="Motivo de elección de la institución"
-        valor={sol[`${prefix}_motivo_institucion`]}
-        className="sm:col-span-2"
-      />
+      <Campo label="Sitio de empleo" valor={sol[`${prefix}_empresa`]} />
+      {extra.map((c) => (
+        <Campo key={c.label} label={c.label} valor={c.valor} />
+      ))}
     </Seccion>
   );
 }

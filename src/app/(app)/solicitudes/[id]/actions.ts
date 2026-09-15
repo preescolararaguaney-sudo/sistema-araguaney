@@ -8,6 +8,16 @@ import type { SolicitudDetalle } from "@/lib/queries/solicitudes";
 
 export type ActionState = { error?: string } | undefined;
 
+// Convierte null -> undefined para los campos "extendidos" de personas
+// (laborales/personales) leídos de la solicitud. Es clave para no perder
+// datos: si esta solicitud no preguntó ese campo (ej. el formulario
+// reducido ya no pide estado civil o sueldo), pasar `undefined` le dice a
+// findOrCreatePersona "no toques este campo" en vez de borrar con null un
+// dato que la misma persona ya tenía de una solicitud anterior más completa.
+function siTieneDato(v: unknown): string | undefined {
+  return v === null || v === undefined ? undefined : (v as string);
+}
+
 export async function aprobarSolicitud(
   _prevState: ActionState,
   formData: FormData,
@@ -76,20 +86,20 @@ export async function aprobarSolicitud(
       nombre: sol.madre_nombre as string,
       apellido: sol.madre_apellido as string,
       telefono: sol.madre_telefono_celular as string | null,
-      lugar_nacimiento: sol.madre_lugar_nacimiento as string | null,
-      fecha_nacimiento: sol.madre_fecha_nacimiento as string | null,
-      estado_civil: sol.madre_estado_civil as string | null,
-      religion: sol.madre_religion as string | null,
-      grado_instruccion: sol.madre_grado_instruccion as string | null,
-      empresa_donde_labora: sol.madre_empresa as string | null,
-      direccion_trabajo: sol.madre_direccion_trabajo as string | null,
-      jefe_inmediato: sol.madre_jefe_inmediato as string | null,
-      departamento_laboral: sol.madre_departamento as string | null,
-      antiguedad_laboral: sol.madre_antiguedad as string | null,
-      sueldo: sol.madre_sueldo as string | null,
-      horario_trabajo: sol.madre_horario as string | null,
-      telefono_habitacion: sol.madre_telefono_hab as string | null,
-      telefono_otro: sol.madre_telefono_otro as string | null,
+      lugar_nacimiento: siTieneDato(sol.madre_lugar_nacimiento),
+      fecha_nacimiento: siTieneDato(sol.madre_fecha_nacimiento),
+      estado_civil: siTieneDato(sol.madre_estado_civil),
+      religion: siTieneDato(sol.madre_religion),
+      grado_instruccion: siTieneDato(sol.madre_grado_instruccion),
+      empresa_donde_labora: siTieneDato(sol.madre_empresa),
+      direccion_trabajo: siTieneDato(sol.madre_direccion_trabajo),
+      jefe_inmediato: siTieneDato(sol.madre_jefe_inmediato),
+      departamento_laboral: siTieneDato(sol.madre_departamento),
+      antiguedad_laboral: siTieneDato(sol.madre_antiguedad),
+      sueldo: siTieneDato(sol.madre_sueldo),
+      horario_trabajo: siTieneDato(sol.madre_horario),
+      telefono_habitacion: siTieneDato(sol.madre_telefono_hab),
+      telefono_otro: siTieneDato(sol.madre_telefono_otro),
     });
     if ("error" in r) return { error: `Madre: ${r.error}` };
     contactosPendientes.push({
@@ -109,20 +119,20 @@ export async function aprobarSolicitud(
       nombre: sol.padre_nombre as string,
       apellido: sol.padre_apellido as string,
       telefono: sol.padre_telefono_celular as string | null,
-      lugar_nacimiento: sol.padre_lugar_nacimiento as string | null,
-      fecha_nacimiento: sol.padre_fecha_nacimiento as string | null,
-      estado_civil: sol.padre_estado_civil as string | null,
-      religion: sol.padre_religion as string | null,
-      grado_instruccion: sol.padre_grado_instruccion as string | null,
-      empresa_donde_labora: sol.padre_empresa as string | null,
-      direccion_trabajo: sol.padre_direccion_trabajo as string | null,
-      jefe_inmediato: sol.padre_jefe_inmediato as string | null,
-      departamento_laboral: sol.padre_departamento as string | null,
-      antiguedad_laboral: sol.padre_antiguedad as string | null,
-      sueldo: sol.padre_sueldo as string | null,
-      horario_trabajo: sol.padre_horario as string | null,
-      telefono_habitacion: sol.padre_telefono_hab as string | null,
-      telefono_otro: sol.padre_telefono_otro as string | null,
+      lugar_nacimiento: siTieneDato(sol.padre_lugar_nacimiento),
+      fecha_nacimiento: siTieneDato(sol.padre_fecha_nacimiento),
+      estado_civil: siTieneDato(sol.padre_estado_civil),
+      religion: siTieneDato(sol.padre_religion),
+      grado_instruccion: siTieneDato(sol.padre_grado_instruccion),
+      empresa_donde_labora: siTieneDato(sol.padre_empresa),
+      direccion_trabajo: siTieneDato(sol.padre_direccion_trabajo),
+      jefe_inmediato: siTieneDato(sol.padre_jefe_inmediato),
+      departamento_laboral: siTieneDato(sol.padre_departamento),
+      antiguedad_laboral: siTieneDato(sol.padre_antiguedad),
+      sueldo: siTieneDato(sol.padre_sueldo),
+      horario_trabajo: siTieneDato(sol.padre_horario),
+      telefono_habitacion: siTieneDato(sol.padre_telefono_hab),
+      telefono_otro: siTieneDato(sol.padre_telefono_otro),
     });
     if ("error" in r) return { error: `Padre: ${r.error}` };
     contactosPendientes.push({
