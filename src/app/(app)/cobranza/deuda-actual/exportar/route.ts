@@ -1,7 +1,7 @@
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getDeudaPorMes } from "@/lib/queries/deuda";
-import { csvResponse } from "@/lib/csv";
+import { buildWorkbookPorAula, xlsxResponse } from "@/lib/xlsx";
 import { hoyCaracas } from "@/lib/format";
 
 export async function GET() {
@@ -23,15 +23,15 @@ export async function GET() {
   const hoy = hoyCaracas();
   const deuda = await getDeudaPorMes(anioEscolar.id, hoy);
 
-  const filas = [
-    ["Aula", "Alumno", "Mes", "Monto (USD)"],
-    ...deuda.map((d) => [
-      d.aula_nombre,
-      `${d.alumno_nombre} ${d.alumno_apellido}`,
-      d.concepto,
-      d.monto_usd.toFixed(2),
-    ]),
-  ];
+  const aulas = Array.from(new Set(deuda.map((d) => d.aula_nombre)));
+  const hojas = aulas.map((aula) => ({
+    nombre: aula,
+    columnas: ["Alumno", "Mes", "Monto (USD)"],
+    filas: deuda
+      .filter((d) => d.aula_nombre === aula)
+      .map((d) => [`${d.alumno_nombre} ${d.alumno_apellido}`, d.concepto, d.monto_usd]),
+  }));
 
-  return csvResponse(filas, `deuda_por_mes_${hoy}.csv`);
+  const buffer = await buildWorkbookPorAula(hojas);
+  return xlsxResponse(buffer, `deuda_por_mes_${hoy}.xlsx`);
 }

@@ -1,7 +1,7 @@
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getRosterAlumnos } from "@/lib/queries/roster-alumnos";
-import { csvResponse } from "@/lib/csv";
+import { buildWorkbookPorAula, xlsxResponse } from "@/lib/xlsx";
 import { formatFecha, hoyCaracas } from "@/lib/format";
 
 export async function GET() {
@@ -21,23 +21,21 @@ export async function GET() {
   }
 
   const roster = await getRosterAlumnos(anioEscolar.id);
+  const aulas = Array.from(new Set(roster.map((a) => a.aula_nombre)));
 
-  let numeroEnAula = 0;
-  let aulaAnterior = "";
-  const filas = [
-    ["Aula", "N°", "Apellido", "Nombre", "Fecha de nacimiento"],
-    ...roster.map((a) => {
-      numeroEnAula = a.aula_nombre === aulaAnterior ? numeroEnAula + 1 : 1;
-      aulaAnterior = a.aula_nombre;
-      return [
-        a.aula_nombre,
-        numeroEnAula,
+  const hojas = aulas.map((aula) => ({
+    nombre: aula,
+    columnas: ["N°", "Apellido", "Nombre", "Fecha de nacimiento"],
+    filas: roster
+      .filter((a) => a.aula_nombre === aula)
+      .map((a, i) => [
+        i + 1,
         a.apellido,
         a.nombre,
         a.fecha_nacimiento ? formatFecha(a.fecha_nacimiento) : "",
-      ];
-    }),
-  ];
+      ]),
+  }));
 
-  return csvResponse(filas, `nomina_alumnos_${hoyCaracas()}.csv`);
+  const buffer = await buildWorkbookPorAula(hojas);
+  return xlsxResponse(buffer, `nomina_alumnos_${hoyCaracas()}.xlsx`);
 }
