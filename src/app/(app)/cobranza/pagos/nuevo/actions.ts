@@ -72,6 +72,7 @@ export async function registrarPago(
     metodo: String(formData.get("metodo") ?? ""),
     referencia: String(formData.get("referencia") ?? "").trim(),
     comprobanteUrl,
+    conceptoIds: formData.getAll("concepto_id").map(String),
     registradoPorPerfilId: perfil.id,
   });
 

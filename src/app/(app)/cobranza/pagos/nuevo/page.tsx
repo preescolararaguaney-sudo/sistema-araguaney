@@ -48,9 +48,6 @@ export default async function RegistrarPagoPage({
     }
 
     const hoy = hoyCaracas();
-    const totalPendiente = detalle.cuotas
-      .filter((c) => c.estado !== "pagado")
-      .reduce((acc, c) => acc + (c.monto_usd - c.monto_usd_pagado), 0);
 
     const { data: tasaHoy } = await supabase
       .from("tasas_bcv")
@@ -80,7 +77,7 @@ export default async function RegistrarPagoPage({
           matriculaId={matriculaId}
           fechaHoy={hoy}
           tasaHoy={tasaHoy ? Number(tasaHoy.tasa) : null}
-          totalPendiente={totalPendiente}
+          cuotas={detalle.cuotas}
         />
 
         <TablaCuotas cuotas={detalle.cuotas} />

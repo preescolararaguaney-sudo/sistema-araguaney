@@ -12,6 +12,12 @@ export type RegistrarPagoInput = {
   metodo: string;
   referencia: string;
   comprobanteUrl: string;
+  // Conceptos (plan_pago_items) a los que se aplica este pago, elegidos a
+  // mano por quien registra — antes se aplicaba siempre a la cuota más
+  // antigua pendiente sin importar para qué dijera el representante que
+  // era el pago, lo cual no coincidía con la realidad (ej. un abono a
+  // matrícula terminaba aplicado a una mensualidad anterior).
+  conceptoIds: string[];
   // Exactamente una de las dos identifica quién registró el pago (ver
   // constraint chk_pago_tiene_registrador en la migración): un perfil real
   // desde dentro del sistema, o un nombre tecleado a mano desde
@@ -40,6 +46,7 @@ export async function procesarPago(
     metodo,
     referencia,
     comprobanteUrl,
+    conceptoIds,
     registradoPorPerfilId,
     registradoPorNombre,
   } = input;
@@ -59,6 +66,9 @@ export async function procesarPago(
   if (!registradoPorPerfilId && !registradoPorNombre?.trim()) {
     return { error: "Falta indicar quién registró el pago." };
   }
+  if (!conceptoIds || conceptoIds.length === 0) {
+    return { error: "Selecciona a qué concepto(s) se aplica este pago." };
+  }
 
   // El monto SIEMPRE se guarda en USD (regla de negocio): si el representante
   // pagó en bolívares, se convierte con la tasa del día antes de continuar.
@@ -71,11 +81,15 @@ export async function procesarPago(
     .from("plan_pago_items")
     .select("id, monto_usd, monto_usd_pagado")
     .eq("matricula_id", matriculaId)
+    .in("id", conceptoIds)
     .neq("estado", "pagado")
     .order("fecha_vencimiento", { ascending: true });
 
   if (errorCuotas || !cuotas) {
-    return { error: "No se pudieron leer las cuotas pendientes." };
+    return { error: "No se pudieron leer los conceptos seleccionados." };
+  }
+  if (cuotas.length === 0) {
+    return { error: "Los conceptos seleccionados ya no están pendientes. Actualiza la página." };
   }
 
   const saldos = cuotas.map((c) => ({
@@ -86,7 +100,7 @@ export async function procesarPago(
 
   if (montoUsdTotal > totalPendiente + 0.01) {
     return {
-      error: `El monto excede lo pendiente de este alumno (máximo ${totalPendiente.toFixed(2)} USD).`,
+      error: `El monto excede lo pendiente de los conceptos seleccionados (máximo ${totalPendiente.toFixed(2)} USD).`,
     };
   }
 

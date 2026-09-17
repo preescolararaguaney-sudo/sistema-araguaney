@@ -67,6 +67,7 @@ export async function registrarPagoPublico(
     metodo: String(formData.get("metodo") ?? ""),
     referencia: String(formData.get("referencia") ?? "").trim(),
     comprobanteUrl,
+    conceptoIds: formData.getAll("concepto_id").map(String),
     registradoPorNombre: cobradoPor,
   });
 

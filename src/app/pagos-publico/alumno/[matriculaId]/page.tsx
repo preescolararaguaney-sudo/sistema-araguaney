@@ -16,9 +16,6 @@ export default async function AlumnoPagoPublicoPage({
   if (!detalle) notFound();
 
   const hoy = hoyCaracas();
-  const totalPendiente = detalle.cuotas
-    .filter((c) => c.estado !== "pagado")
-    .reduce((acc, c) => acc + (c.monto_usd - c.monto_usd_pagado), 0);
 
   const admin = createAdminClient();
   const { data: tasaHoy } = await admin
@@ -45,7 +42,7 @@ export default async function AlumnoPagoPublicoPage({
         matriculaId={matriculaId}
         fechaHoy={hoy}
         tasaHoy={tasaHoy ? Number(tasaHoy.tasa) : null}
-        totalPendiente={totalPendiente}
+        cuotas={detalle.cuotas}
       />
 
       <div className="mt-6">

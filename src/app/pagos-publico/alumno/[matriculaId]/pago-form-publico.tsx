@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { registrarPagoPublico, obtenerTasaBcvActualPublico } from "../../actions";
+import type { CuotaPlan } from "@/lib/queries/matriculas";
 
 const METODOS = [
   { value: "transferencia_bs", label: "Transferencia en Bs" },
@@ -16,12 +17,12 @@ export function PagoFormPublico({
   matriculaId,
   fechaHoy,
   tasaHoy,
-  totalPendiente,
+  cuotas,
 }: {
   matriculaId: string;
   fechaHoy: string;
   tasaHoy: number | null;
-  totalPendiente: number;
+  cuotas: CuotaPlan[];
 }) {
   const [state, formAction, pending] = useActionState(registrarPagoPublico, undefined);
   const [moneda, setMoneda] = useState<"BS" | "USD">("BS");
@@ -29,8 +30,23 @@ export function PagoFormPublico({
   const [monto, setMonto] = useState(0);
   const [consultandoTasa, iniciarConsultaTasa] = useTransition();
   const [errorTasa, setErrorTasa] = useState<string | null>(null);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+
+  const pendientes = cuotas.filter((c) => c.estado !== "pagado");
+  const saldoSeleccionado = pendientes
+    .filter((c) => seleccionados.has(c.id))
+    .reduce((acc, c) => acc + (c.monto_usd - c.monto_usd_pagado), 0);
 
   const equivalente = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto * tasa;
+
+  function alternarConcepto(id: string) {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function consultarTasaBcv() {
     setErrorTasa(null);
@@ -57,6 +73,40 @@ export function PagoFormPublico({
           del día.
         </p>
       )}
+
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium text-stone-700">
+          ¿A qué concepto(s) se aplica este pago?
+        </legend>
+        <div className="flex flex-col gap-1 rounded-md border border-stone-200 p-2">
+          {pendientes.map((c) => (
+            <label key={c.id} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-sm hover:bg-stone-50">
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="concepto_id"
+                  value={c.id}
+                  checked={seleccionados.has(c.id)}
+                  onChange={() => alternarConcepto(c.id)}
+                />
+                {c.descripcion}
+              </span>
+              <span className="text-xs text-stone-500">
+                Saldo {(c.monto_usd - c.monto_usd_pagado).toFixed(2)} USD
+              </span>
+            </label>
+          ))}
+          {pendientes.length === 0 && (
+            <p className="px-2 py-1 text-sm text-stone-500">Sin conceptos pendientes.</p>
+          )}
+        </div>
+        {seleccionados.size > 0 && (
+          <p className="mt-1 text-xs text-stone-500">
+            Saldo de lo seleccionado: {saldoSeleccionado.toFixed(2)} USD
+            {tasa > 0 && ` (≈ ${(saldoSeleccionado * tasa).toFixed(2)} Bs)`}
+          </p>
+        )}
+      </fieldset>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Campo label="Fecha de pago" name="fecha_pago" type="date" defaultValue={fechaHoy} />
@@ -159,10 +209,8 @@ export function PagoFormPublico({
       </div>
 
       <p className="text-xs text-stone-500">
-        Pendiente del alumno: {totalPendiente.toFixed(2)} USD
-        {tasa > 0 && ` (≈ ${(totalPendiente * tasa).toFixed(2)} Bs a esta tasa)`}. El
-        pago se aplica automáticamente a las cuotas más antiguas primero
-        (abono). Si el monto no cubre una cuota completa, queda &ldquo;parcial&rdquo;.
+        Si el monto no cubre por completo lo seleccionado, queda &ldquo;parcial&rdquo;
+        y se aplica primero al concepto más antiguo de los marcados.
       </p>
 
       {state?.error && (
