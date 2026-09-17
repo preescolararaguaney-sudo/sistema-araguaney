@@ -1,5 +1,4 @@
 import { getResumenCobranza } from "@/lib/queries/dashboard";
-import { formatBs, formatUsd } from "@/lib/format";
 
 function Tarjeta({ titulo, valor, nota }: { titulo: string; valor: string; nota?: string }) {
   return (
@@ -38,11 +37,6 @@ export default async function PanelPage() {
       </h1>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Tarjeta titulo="Alumnos inscritos" valor={String(resumen.alumnosInscritos)} />
-        <Tarjeta
-          titulo="Cobrado este mes"
-          valor={formatUsd(resumen.cobradoMesUsd)}
-          nota={formatBs(resumen.cobradoMesBs)}
-        />
         <Tarjeta titulo="Cantidad de aulas" valor={String(resumen.cantidadAulas)} />
       </div>
     </div>
