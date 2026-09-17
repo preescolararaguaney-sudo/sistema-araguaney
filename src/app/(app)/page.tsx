@@ -45,7 +45,7 @@ export default async function PanelPage() {
           href="/cobranza/deuda-actual/exportar"
           className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
         >
-          Deuda actual por salón (Excel)
+          Deuda por mes de cada alumno (Excel)
         </a>
         <a
           href="/alumnos/exportar-nomina"
