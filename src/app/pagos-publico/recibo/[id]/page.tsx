@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getReciboDetallePublico } from "@/lib/queries/pagos-publico";
 import { formatBs, formatFecha, formatUsd, METODO_PAGO_LABEL } from "@/lib/format";
 import { PrintButton } from "../../../(app)/cobranza/pagos/[id]/recibo/print-button";
+import { ComprobanteFormPublico } from "./comprobante-form";
 
 export default async function ReciboPagoPublicoPage({
   params,
@@ -63,6 +64,8 @@ export default async function ReciboPagoPublicoPage({
           <p className="text-sm text-stone-600">{formatBs(recibo.monto_bs_total)}</p>
         </div>
       </div>
+
+      <ComprobanteFormPublico pagoId={recibo.id} comprobanteUrl={recibo.comprobante_url} />
     </div>
   );
 }

@@ -124,6 +124,7 @@ export type ReciboDetallePublico = {
   tasa_bcv_valor: number;
   metodo: string;
   referencia: string | null;
+  comprobante_url: string | null;
   anulado: boolean;
   motivo_anulacion: string | null;
   alumno_nombre: string;
@@ -140,7 +141,7 @@ export async function getReciboDetallePublico(pagoId: string): Promise<ReciboDet
     .from("pagos")
     .select(
       `id, numero_recibo, fecha_pago, monto_usd_total, monto_bs_total, tasa_bcv_valor,
-       metodo, referencia, anulado, motivo_anulacion, registrado_por_nombre,
+       metodo, referencia, comprobante_url, anulado, motivo_anulacion, registrado_por_nombre,
        matricula:matriculas!inner(
          alumno:alumnos!inner(
            nombre, apellido,
@@ -178,6 +179,7 @@ export async function getReciboDetallePublico(pagoId: string): Promise<ReciboDet
     tasa_bcv_valor: Number(pago.tasa_bcv_valor),
     metodo: pago.metodo,
     referencia: pago.referencia,
+    comprobante_url: pago.comprobante_url,
     anulado: pago.anulado,
     motivo_anulacion: pago.motivo_anulacion,
     registrado_por_nombre: pago.registrado_por_nombre,

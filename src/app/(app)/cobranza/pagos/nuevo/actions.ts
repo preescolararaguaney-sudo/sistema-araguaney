@@ -5,6 +5,7 @@ import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { hoyCaracas } from "@/lib/format";
 import { procesarPago } from "@/lib/pagos";
+import { subirComprobante } from "@/lib/comprobantes";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -54,6 +55,14 @@ export async function registrarPago(
   const perfil = await requireRol(["directora", "administracion"]);
   const supabase = await createClient();
 
+  let comprobanteUrl = "";
+  const foto = formData.get("comprobante_foto");
+  if (foto instanceof File && foto.size > 0) {
+    const subida = await subirComprobante(foto);
+    if ("error" in subida) return subida;
+    comprobanteUrl = subida.url;
+  }
+
   const resultado = await procesarPago(supabase, {
     matriculaId: String(formData.get("matricula_id") ?? ""),
     fechaPago: String(formData.get("fecha_pago") ?? ""),
@@ -62,7 +71,7 @@ export async function registrarPago(
     montoIngresado: Number(formData.get("monto")),
     metodo: String(formData.get("metodo") ?? ""),
     referencia: String(formData.get("referencia") ?? "").trim(),
-    comprobanteUrl: String(formData.get("comprobante_url") ?? "").trim(),
+    comprobanteUrl,
     registradoPorPerfilId: perfil.id,
   });
 
