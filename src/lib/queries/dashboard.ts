@@ -7,8 +7,7 @@ export type ResumenCobranza = {
   alumnosInscritos: number;
   cobradoMesUsd: number;
   cobradoMesBs: number;
-  pendienteUsd: number;
-  morosos: number;
+  cantidadAulas: number;
 };
 
 export async function getResumenCobranza(): Promise<ResumenCobranza> {
@@ -30,8 +29,7 @@ export async function getResumenCobranza(): Promise<ResumenCobranza> {
       alumnosInscritos: 0,
       cobradoMesUsd: 0,
       cobradoMesBs: 0,
-      pendienteUsd: 0,
-      morosos: 0,
+      cantidadAulas: 0,
     };
   }
 
@@ -58,31 +56,16 @@ export async function getResumenCobranza(): Promise<ResumenCobranza> {
     0,
   );
 
-  const { data: cuotasAbiertas } = await supabase
-    .from("plan_pago_items")
-    .select(
-      "monto_usd, monto_usd_pagado, fecha_vencimiento, matricula_id, matricula:matriculas!inner(anio_escolar_id)",
-    )
-    .eq("matricula.anio_escolar_id", anioEscolar.id)
-    .neq("estado", "pagado");
-
-  const pendienteUsd = (cuotasAbiertas ?? []).reduce(
-    (acc, c) => acc + (Number(c.monto_usd) - Number(c.monto_usd_pagado)),
-    0,
-  );
-
-  const morosos = new Set(
-    (cuotasAbiertas ?? [])
-      .filter((c) => c.fecha_vencimiento < hoy)
-      .map((c) => c.matricula_id),
-  ).size;
+  const { count: cantidadAulas } = await supabase
+    .from("aulas")
+    .select("id", { count: "exact", head: true })
+    .eq("activa", true);
 
   return {
     anioEscolar,
     alumnosInscritos: alumnosInscritos ?? 0,
     cobradoMesUsd,
     cobradoMesBs,
-    pendienteUsd,
-    morosos,
+    cantidadAulas: cantidadAulas ?? 0,
   };
 }

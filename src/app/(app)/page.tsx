@@ -43,12 +43,7 @@ export default async function PanelPage() {
           valor={formatUsd(resumen.cobradoMesUsd)}
           nota={formatBs(resumen.cobradoMesBs)}
         />
-        <Tarjeta titulo="Pendiente por cobrar" valor={formatUsd(resumen.pendienteUsd)} />
-        <Tarjeta
-          titulo="Representantes morosos"
-          valor={String(resumen.morosos)}
-          nota="Cuotas vencidas sin pagar"
-        />
+        <Tarjeta titulo="Cantidad de aulas" valor={String(resumen.cantidadAulas)} />
       </div>
     </div>
   );
