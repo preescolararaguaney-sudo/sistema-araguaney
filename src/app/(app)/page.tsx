@@ -39,6 +39,21 @@ export default async function PanelPage() {
         <Tarjeta titulo="Alumnos inscritos" valor={String(resumen.alumnosInscritos)} />
         <Tarjeta titulo="Cantidad de aulas" valor={String(resumen.cantidadAulas)} />
       </div>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <a
+          href="/cobranza/deuda-actual/exportar"
+          className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+        >
+          Deuda actual por salón (Excel)
+        </a>
+        <a
+          href="/alumnos/exportar-nomina"
+          className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+        >
+          Nómina de alumnos por sección (Excel)
+        </a>
+      </div>
     </div>
   );
 }
