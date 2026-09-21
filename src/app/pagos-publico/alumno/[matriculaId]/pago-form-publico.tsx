@@ -201,7 +201,6 @@ export function PagoFormPublico({
             name="comprobante_foto"
             type="file"
             accept="image/*,.pdf"
-            capture="environment"
             className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
           />
           <span className="text-xs text-stone-500">Si no la tienes a mano, puedes agregarla después desde el recibo.</span>

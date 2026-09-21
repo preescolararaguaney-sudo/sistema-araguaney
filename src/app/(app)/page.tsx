@@ -1,4 +1,6 @@
 import { getResumenCobranza } from "@/lib/queries/dashboard";
+import { hoyCaracas } from "@/lib/format";
+import { CalculadoraBcv } from "./calculadora-bcv";
 
 function Tarjeta({ titulo, valor, nota }: { titulo: string; valor: string; nota?: string }) {
   return (
@@ -38,6 +40,11 @@ export default async function PanelPage() {
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Tarjeta titulo="Alumnos inscritos" valor={String(resumen.alumnosInscritos)} />
         <Tarjeta titulo="Cantidad de aulas" valor={String(resumen.cantidadAulas)} />
+        <CalculadoraBcv
+          tasaInicial={resumen.ultimaTasaBcv?.tasa ?? null}
+          fechaTasa={resumen.ultimaTasaBcv?.fecha ?? null}
+          hoy={hoyCaracas()}
+        />
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">

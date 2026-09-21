@@ -35,7 +35,6 @@ export function ComprobanteFormPublico({
             name="comprobante_foto"
             type="file"
             accept="image/*,.pdf"
-            capture="environment"
             required
             className="text-xs"
           />
