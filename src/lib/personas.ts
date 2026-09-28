@@ -27,6 +27,18 @@ export type DatosPersona = {
   telefono_otro?: string | null;
 };
 
+// Deja solo los dígitos: "V-18.814.634", "18814634" y "v18814634" deben
+// coincidir con la misma persona. Sin esto, findOrCreatePersona no encuentra
+// una persona ya cargada solo porque el formato de la cédula varió entre
+// dos envíos (ej. el padre la escribe distinto en el formulario público vs.
+// en la lista de autorizados a retirar del mismo formulario), y crea un
+// duplicado en vez de reutilizarla — bug real detectado en producción: una
+// misma madre/tía terminó con dos fichas de "persona" y contactos/autorizados
+// repetidos en el alumno.
+function normalizarCedula(cedula: string): string {
+  return cedula.replace(/[^0-9]/g, "");
+}
+
 /**
  * Busca una persona por cédula y la reutiliza si ya existe (ej. el
  * representante de pago es también el padre) en vez de violar la
@@ -37,7 +49,7 @@ export async function findOrCreatePersona(
   supabase: SupabaseServerClient,
   datos: DatosPersona,
 ): Promise<{ id: string } | { error: string }> {
-  const cedula = datos.cedula.trim();
+  const cedula = normalizarCedula(datos.cedula.trim());
   if (!cedula) return { error: "Falta la cédula" };
 
   const { data: existente } = await supabase
