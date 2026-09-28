@@ -62,6 +62,38 @@ export default async function TrabajadorDetallePage({
           <EstadoForm trabajadorId={ficha.id} estadoActual={ficha.estado} />
         </section>
 
+        <section className="rounded-xl border border-stone-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-stone-900">Datos adicionales</h2>
+          <dl className="flex flex-col gap-2 text-sm">
+            <Dato etiqueta="País de nacimiento" valor={ficha.pais_nacimiento || "—"} />
+            <Dato
+              etiqueta="Fecha de nacimiento"
+              valor={ficha.fecha_nacimiento ? formatFecha(ficha.fecha_nacimiento) : "—"}
+            />
+            <Dato etiqueta="Correo electrónico" valor={ficha.email || "—"} />
+            <Dato
+              etiqueta="Domicilio"
+              valor={
+                [ficha.domicilio_parroquia, ficha.domicilio_municipio, ficha.domicilio_estado]
+                  .filter(Boolean)
+                  .join(", ") || "—"
+              }
+            />
+          </dl>
+        </section>
+
+        <section className="rounded-xl border border-stone-200 bg-white p-5 lg:col-span-2">
+          <h2 className="mb-3 text-sm font-semibold text-stone-900">Información académica</h2>
+          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+            <Dato etiqueta="Título obtenido" valor={ficha.titulo_obtenido || "—"} />
+            <Dato etiqueta="Institución" valor={ficha.institucion_titulo || "—"} />
+            <Dato
+              etiqueta="Fecha de obtención"
+              valor={ficha.fecha_obtencion_titulo ? formatFecha(ficha.fecha_obtencion_titulo) : "—"}
+            />
+          </dl>
+        </section>
+
         <section className="rounded-xl border border-stone-200 bg-white p-5 lg:col-span-2">
           <h2 className="mb-3 text-sm font-semibold text-stone-900">
             Reposos, permisos y vacaciones

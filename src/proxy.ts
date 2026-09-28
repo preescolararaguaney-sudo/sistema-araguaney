@@ -34,11 +34,13 @@ export async function proxy(request: NextRequest) {
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
   // Rutas públicas, sin login: /inscripcion (el representante llena la
-  // planilla) y /pagos-publico (la persona encargada de cobrar registra
-  // pagos sin necesitar usuario/contraseña).
+  // planilla), /pagos-publico (la persona encargada de cobrar registra
+  // pagos sin necesitar usuario/contraseña) y /personal-inscripcion (un
+  // aspirante/nuevo ingreso llena su ficha de personal).
   const isRutaPublica =
     request.nextUrl.pathname.startsWith("/inscripcion") ||
-    request.nextUrl.pathname.startsWith("/pagos-publico");
+    request.nextUrl.pathname.startsWith("/pagos-publico") ||
+    request.nextUrl.pathname.startsWith("/personal-inscripcion");
 
   if (!user && !isAuthRoute && !isRutaPublica) {
     const url = request.nextUrl.clone();

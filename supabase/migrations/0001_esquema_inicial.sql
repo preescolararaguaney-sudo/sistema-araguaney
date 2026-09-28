@@ -524,10 +524,59 @@ create table trabajadores (
   banco text,
   numero_cuenta text,
   estado estado_trabajador not null default 'activo',
+  -- Datos de la ficha de personal (2026-09-28): llenados por el propio
+  -- trabajador vía /personal-inscripcion y aprobados por la directora, igual
+  -- que la ficha de un alumno.
+  pais_nacimiento text,
+  fecha_nacimiento date,
+  email text,
+  domicilio_estado text,
+  domicilio_municipio text,
+  domicilio_parroquia text,
+  -- `direccion` (arriba) ya se usa como la dirección exacta del domicilio.
+  titulo_obtenido text,
+  institucion_titulo text,
+  fecha_obtencion_titulo date,
   creado_en timestamptz not null default now()
 );
 
 create index idx_trabajadores_cargo on trabajadores (cargo_id);
+
+-- Solicitud pública de personal: un aspirante/nuevo ingreso llena sus datos
+-- desde /personal-inscripcion (sin login) y queda pendiente hasta que la
+-- directora la apruebe (crea el `trabajadores`, asignando cargo/salario/tipo
+-- de contrato ella misma — esos datos no los llena el aspirante). Mismo
+-- patrón que `solicitudes_inscripcion` para alumnos.
+create table solicitudes_personal (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  apellido text not null,
+  pais_nacimiento text,
+  cedula text,
+  fecha_nacimiento date,
+  email text,
+  telefono text,
+  domicilio_estado text,
+  domicilio_municipio text,
+  domicilio_parroquia text,
+  direccion text,
+  titulo_obtenido text,
+  institucion_titulo text,
+  fecha_obtencion_titulo date,
+  fecha_ingreso date,
+  estado estado_solicitud not null default 'pendiente',
+  revisado_por uuid references perfiles(id),
+  revisado_en timestamptz,
+  motivo_rechazo text,
+  trabajador_creado_id uuid references trabajadores(id),
+  creado_en timestamptz not null default now(),
+  constraint chk_solicitud_personal_revision check (
+    (estado = 'pendiente' and revisado_por is null and revisado_en is null)
+    or (estado <> 'pendiente' and revisado_por is not null and revisado_en is not null)
+  )
+);
+
+create index idx_solicitudes_personal_estado on solicitudes_personal (estado, creado_en);
 
 alter table perfiles
   add constraint fk_perfiles_trabajador foreign key (trabajador_id) references trabajadores(id);
@@ -985,6 +1034,7 @@ alter table pagos enable row level security;
 alter table pago_aplicaciones enable row level security;
 alter table cargos enable row level security;
 alter table trabajadores enable row level security;
+alter table solicitudes_personal enable row level security;
 alter table trabajador_novedades enable row level security;
 alter table proveedores_servicios enable row level security;
 alter table pagos_honorarios enable row level security;
@@ -1057,6 +1107,15 @@ create policy solicitudes_insercion_publica on solicitudes_inscripcion for inser
 create policy solicitudes_admin_gestion on solicitudes_inscripcion for select
   using (auth_rol() in ('directora', 'administracion'));
 create policy solicitudes_admin_actualiza on solicitudes_inscripcion for update
+  using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
+
+-- --- Solicitudes de personal: mismo patrón, para /personal-inscripcion ---
+create policy solicitudes_personal_insercion_publica on solicitudes_personal for insert
+  to anon, authenticated
+  with check (estado = 'pendiente' and revisado_por is null);
+create policy solicitudes_personal_admin_gestion on solicitudes_personal for select
+  using (auth_rol() in ('directora', 'administracion'));
+create policy solicitudes_personal_admin_actualiza on solicitudes_personal for update
   using (auth_rol() in ('directora', 'administracion')) with check (auth_rol() in ('directora', 'administracion'));
 
 -- --- Financiero (cobranza): solo directora y administración ---

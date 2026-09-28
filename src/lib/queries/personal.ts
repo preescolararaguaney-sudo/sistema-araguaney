@@ -96,6 +96,15 @@ export type TrabajadorFicha = {
   banco: string | null;
   numero_cuenta: string | null;
   estado: string;
+  pais_nacimiento: string | null;
+  fecha_nacimiento: string | null;
+  email: string | null;
+  domicilio_estado: string | null;
+  domicilio_municipio: string | null;
+  domicilio_parroquia: string | null;
+  titulo_obtenido: string | null;
+  institucion_titulo: string | null;
+  fecha_obtencion_titulo: string | null;
   tienePerfil: boolean;
   novedades: NovedadFila[];
   aulas: AulaAsignada[];
@@ -109,6 +118,8 @@ export async function getTrabajadorFicha(id: string): Promise<TrabajadorFicha | 
     .select(
       `id, nombre, apellido, cedula, telefono, direccion, cargo_id, fecha_ingreso, fecha_egreso,
        tipo_contrato, salario_base_mensual, salario_formal_mensual_bs, banco, numero_cuenta, estado,
+       pais_nacimiento, fecha_nacimiento, email, domicilio_estado, domicilio_municipio, domicilio_parroquia,
+       titulo_obtenido, institucion_titulo, fecha_obtencion_titulo,
        cargo:cargos!inner(nombre)`,
     )
     .eq("id", id)
@@ -154,6 +165,15 @@ export async function getTrabajadorFicha(id: string): Promise<TrabajadorFicha | 
     banco: t.banco,
     numero_cuenta: t.numero_cuenta,
     estado: t.estado,
+    pais_nacimiento: t.pais_nacimiento,
+    fecha_nacimiento: t.fecha_nacimiento,
+    email: t.email,
+    domicilio_estado: t.domicilio_estado,
+    domicilio_municipio: t.domicilio_municipio,
+    domicilio_parroquia: t.domicilio_parroquia,
+    titulo_obtenido: t.titulo_obtenido,
+    institucion_titulo: t.institucion_titulo,
+    fecha_obtencion_titulo: t.fecha_obtencion_titulo,
     tienePerfil: !!perfil,
     novedades: novedades ?? [],
     aulas: (aulas ?? []).map((a) => {
