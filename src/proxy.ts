@@ -40,7 +40,9 @@ export async function proxy(request: NextRequest) {
   const isRutaPublica =
     request.nextUrl.pathname.startsWith("/inscripcion") ||
     request.nextUrl.pathname.startsWith("/pagos-publico") ||
-    request.nextUrl.pathname.startsWith("/personal-inscripcion");
+    request.nextUrl.pathname.startsWith("/personal-inscripcion") ||
+    // Cron de vercel.json (sin sesión): mantiene activo el proyecto Supabase.
+    request.nextUrl.pathname === "/api/keepalive";
 
   if (!user && !isAuthRoute && !isRutaPublica) {
     const url = request.nextUrl.clone();
