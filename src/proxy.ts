@@ -41,6 +41,9 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/inscripcion") ||
     request.nextUrl.pathname.startsWith("/pagos-publico") ||
     request.nextUrl.pathname.startsWith("/personal-inscripcion") ||
+    // Página de emergencia del seguro escolar: la abre cualquier docente
+    // desde su celular en el momento, sin usuario/contraseña.
+    request.nextUrl.pathname.startsWith("/emergencia") ||
     // Cron de vercel.json (sin sesión): mantiene activo el proyecto Supabase.
     request.nextUrl.pathname === "/api/keepalive";
 

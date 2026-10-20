@@ -195,6 +195,11 @@ create table alumnos (
   -- que son antecedentes médicos generales).
   medicamento_autorizado text,
   dosis_medicamento_autorizado text,
+  -- N.º de certificado del alumno en la póliza de seguro escolar vigente
+  -- (La Internacional, 2026-2027). Null = el alumno NO figura en la póliza
+  -- (sin cobertura). Lo usa la página pública /emergencia. Se vuelve a
+  -- cargar cada año con la nueva "Relación de asegurados por certificado".
+  certificado_seguro integer,
   creado_en timestamptz not null default now()
 );
 
