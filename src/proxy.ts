@@ -45,7 +45,10 @@ export async function proxy(request: NextRequest) {
     // desde su celular en el momento, sin usuario/contraseña.
     request.nextUrl.pathname.startsWith("/emergencia") ||
     // Cron de vercel.json (sin sesión): mantiene activo el proyecto Supabase.
-    request.nextUrl.pathname === "/api/keepalive";
+    request.nextUrl.pathname === "/api/keepalive" ||
+    // Webhook del bot de Telegram (pagos): se protege con su propio secreto
+    // en la cabecera, no con la sesión de Supabase.
+    request.nextUrl.pathname === "/api/telegram/webhook";
 
   if (!user && !isAuthRoute && !isRutaPublica) {
     const url = request.nextUrl.clone();

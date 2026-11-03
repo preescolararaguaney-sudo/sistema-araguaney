@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { registrarPago, obtenerTasaBcvActual } from "./actions";
+import { useActionState, useState, useTransition, type ReactNode } from "react";
+import { registrarPago, obtenerTasaBcvActual, type ActionState } from "./actions";
 import type { CuotaPlan } from "@/lib/queries/matriculas";
 
 const METODOS = [
@@ -13,24 +13,45 @@ const METODOS = [
   { value: "otro", label: "Otro" },
 ];
 
+// Valores con los que arranca el formulario cuando el pago viene de la bandeja
+// (ya leído del capture) en vez de teclearse desde cero.
+export type PagoInicial = {
+  monto?: number;
+  referencia?: string;
+  metodo?: string;
+  conceptoIds?: string[];
+};
+
 export function PagoForm({
   matriculaId,
   fechaHoy,
   tasaHoy,
   cuotas,
+  accion = registrarPago,
+  inicial,
+  ocultos,
+  comprobanteUrl,
+  textoBoton = "Registrar pago",
+  children,
 }: {
   matriculaId: string;
   fechaHoy: string;
   tasaHoy: number | null;
   cuotas: CuotaPlan[];
+  accion?: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  inicial?: PagoInicial;
+  ocultos?: Record<string, string>;
+  comprobanteUrl?: string;
+  textoBoton?: string;
+  children?: ReactNode;
 }) {
-  const [state, formAction, pending] = useActionState(registrarPago, undefined);
+  const [state, formAction, pending] = useActionState(accion, undefined);
   const [moneda, setMoneda] = useState<"BS" | "USD">("BS");
   const [tasa, setTasa] = useState(tasaHoy ?? 0);
-  const [monto, setMonto] = useState(0);
+  const [monto, setMonto] = useState(inicial?.monto ?? 0);
   const [consultandoTasa, iniciarConsultaTasa] = useTransition();
   const [errorTasa, setErrorTasa] = useState<string | null>(null);
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set(inicial?.conceptoIds ?? []));
 
   const pendientes = cuotas.filter((c) => c.estado !== "pagado");
   const saldoSeleccionado = pendientes
@@ -63,6 +84,9 @@ export function PagoForm({
   return (
     <form action={formAction} className="flex flex-col gap-4 rounded-xl border border-stone-200 bg-white p-5">
       <input type="hidden" name="matricula_id" value={matriculaId} />
+      {Object.entries(ocultos ?? {}).map(([nombre, valor]) => (
+        <input key={nombre} type="hidden" name={nombre} value={valor} />
+      ))}
 
       {!tasaHoy && (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -169,6 +193,7 @@ export function PagoForm({
             type="number"
             step="0.01"
             required
+            defaultValue={inicial?.monto}
             onChange={(e) => setMonto(Number(e.target.value) || 0)}
             className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
           />
@@ -183,6 +208,7 @@ export function PagoForm({
           <select
             name="metodo"
             required
+            defaultValue={inicial?.metodo}
             className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
           >
             {METODOS.map((m) => (
@@ -192,23 +218,34 @@ export function PagoForm({
             ))}
           </select>
         </label>
-        <Campo label="Referencia" name="referencia" type="text" required={false} />
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-stone-700">Foto del comprobante (opcional)</span>
-          <input
-            name="comprobante_foto"
-            type="file"
-            accept="image/*,.pdf"
-            className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
-          />
-          <span className="text-xs text-stone-500">Si no la tienes a mano, puedes agregarla después desde el recibo.</span>
-        </label>
+        <Campo label="Referencia" name="referencia" type="text" required={false} defaultValue={inicial?.referencia} />
+        {comprobanteUrl ? (
+          <p className="text-sm text-stone-700">
+            Comprobante adjunto desde Telegram.{" "}
+            <a href={comprobanteUrl} target="_blank" rel="noreferrer" className="text-emerald-700 underline">
+              Abrir
+            </a>
+          </p>
+        ) : (
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-stone-700">Foto del comprobante (opcional)</span>
+            <input
+              name="comprobante_foto"
+              type="file"
+              accept="image/*,.pdf"
+              className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+            />
+            <span className="text-xs text-stone-500">Si no la tienes a mano, puedes agregarla después desde el recibo.</span>
+          </label>
+        )}
       </div>
 
       <p className="text-xs text-stone-500">
         Si el monto no cubre por completo lo seleccionado, queda &ldquo;parcial&rdquo;
         y se aplica primero al concepto más antiguo de los marcados.
       </p>
+
+      {children}
 
       {state?.error && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
@@ -219,7 +256,7 @@ export function PagoForm({
         disabled={pending}
         className="self-start rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-60"
       >
-        {pending ? "Registrando..." : "Registrar pago"}
+        {pending ? "Registrando..." : textoBoton}
       </button>
     </form>
   );

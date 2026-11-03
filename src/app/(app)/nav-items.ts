@@ -40,6 +40,11 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["directora", "administracion"],
   },
   {
+    href: "/cobranza/bandeja",
+    label: "Bandeja de pagos",
+    roles: ["directora", "administracion"],
+  },
+  {
     href: "/cobranza/estado-cuenta",
     label: "Estado de cuenta",
     roles: ["directora", "administracion"],
