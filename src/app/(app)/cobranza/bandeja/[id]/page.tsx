@@ -53,9 +53,15 @@ export default async function PagoPendientePage({
         <Dato etiqueta="Banco" valor={p.banco ?? "—"} />
         <Dato etiqueta="Método" valor={p.metodo ? (METODO_PAGO_LABEL[p.metodo] ?? p.metodo) : "—"} />
         <Dato etiqueta="Transfirió" valor={p.emisor_nombre ?? "—"} />
+        <Dato etiqueta="Descripción en el comprobante" valor={p.lectura?.descripcion ?? "—"} />
         <Dato etiqueta="Nota enviada" valor={p.nota ?? "—"} />
         <Dato etiqueta="Enviado" valor={`${formatFechaHora(p.creado_en)}${p.enviado_por ? ` · ${p.enviado_por}` : ""}`} />
       </dl>
+      {p.lectura?.observaciones && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <span className="font-medium">Lo que notó la IA al leer el capture:</span> {p.lectura.observaciones}
+        </p>
+      )}
     </div>
   );
 

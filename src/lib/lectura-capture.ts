@@ -14,6 +14,7 @@ export const LecturaSchema = z.object({
   metodo: z.enum(["transferencia_bs", "pago_movil", "zelle", "efectivo_bs", "efectivo_usd", "otro"]).nullable(),
   emisor_nombre: z.string().nullable(),
   emisor_cedula: z.string().nullable(),
+  descripcion: z.string().nullable(),
   alumno_en_nota: z.string().nullable(),
   mes_en_nota: z.string().nullable(),
   observaciones: z.string().nullable(),
@@ -31,6 +32,8 @@ Extrae solo lo que se ve. Reglas:
 - banco: banco emisor o receptor que se lea en el comprobante.
 - metodo: "pago_movil" si dice pago móvil; "transferencia_bs" si es transferencia en bolívares; "zelle" si es Zelle; "otro" si no se sabe.
 - emisor_nombre y emisor_cedula: quién envió el dinero, solo si aparece en el comprobante (cédula solo dígitos).
+- descripcion: el texto libre que quien transfirió escribió como concepto o descripción de la operación (por ejemplo "Pago Daniela Bermudez", "mensualidad octubre"). Suele traer el nombre del niño o de la familia. Cópialo tal cual; null si no hay.
+- Si el comprobante muestra que la cuenta del colegio ("U E P Colegio Araguaney") es la que ENVÍA el dinero y no la que lo recibe, no es un pago recibido: explícalo en observaciones.
 - De la nota de texto, si existe: alumno_en_nota es el nombre del niño o de la familia que se menciona; mes_en_nota es el mes que se menciona (por ejemplo "octubre"). Si la nota no dice algo, null.
 - Nunca inventes datos. Si un número es ilegible, pon null y dilo en observaciones.`;
 

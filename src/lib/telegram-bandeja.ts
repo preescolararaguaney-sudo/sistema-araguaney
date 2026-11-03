@@ -122,7 +122,7 @@ async function procesarCapture(
   }
 
   const candidatos = lectura
-    ? await buscarCandidatos([nota, lectura.alumno_en_nota], {
+    ? await buscarCandidatos([nota, lectura.alumno_en_nota, lectura.descripcion], {
         nombre: lectura.emisor_nombre,
         cedula: lectura.emisor_cedula,
       })
