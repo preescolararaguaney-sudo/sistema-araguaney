@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPagoPendiente } from "@/lib/queries/bandeja";
 import { buscarMatriculas, getMatriculaDetalle } from "@/lib/queries/matriculas";
 import { destinatarioDeMatricula, sugerirConceptos } from "@/lib/matching-pagos";
+import { tasaBcvParaFecha } from "@/lib/tasa-bcv";
 import { formatBs, formatFecha, formatFechaHora, hoyCaracas, METODO_PAGO_LABEL } from "@/lib/format";
 import { BuscadorAlumno } from "../../buscador-alumno";
 import { TablaCuotas } from "../../tabla-cuotas";
@@ -172,13 +173,9 @@ export default async function PagoPendientePage({
   };
 
   const fecha = p.fecha_pago ?? hoyCaracas();
-  const { data: tasaRow } = await supabase
-    .from("tasas_bcv")
-    .select("tasa, fecha")
-    .lte("fecha", fecha)
-    .order("fecha", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Tasa oficial del BCV vigente el día de la transferencia (no la de hoy).
+  const tasaDia = await tasaBcvParaFecha(fecha);
+  const tasaSugerida = "tasa" in tasaDia ? tasaDia : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -201,16 +198,22 @@ export default async function PagoPendientePage({
               Faltan datos de quien va en la factura (nombre y cédula). Complétalos abajo antes de aprobar.
             </p>
           )}
-          {tasaRow && (
+          {tasaSugerida ? (
             <p className="text-xs text-stone-500">
-              Tasa BCV sugerida: {Number(tasaRow.tasa)} (del {formatFecha(tasaRow.fecha)}). Puedes cambiarla.
+              Tasa BCV del día de la transferencia ({formatFecha(fecha)}): {tasaSugerida.tasa}
+              {tasaSugerida.fechaTasa !== fecha && ` — la publicada el ${formatFecha(tasaSugerida.fechaTasa)}, último día hábil`}.
+              {" "}Puedes cambiarla.
+            </p>
+          ) : (
+            <p className="text-xs text-amber-700">
+              {"error" in tasaDia ? tasaDia.error : ""}
             </p>
           )}
 
           <PagoForm
             matriculaId={matriculaId}
             fechaHoy={fecha}
-            tasaHoy={tasaRow ? Number(tasaRow.tasa) : null}
+            tasaHoy={tasaSugerida ? tasaSugerida.tasa : null}
             cuotas={detalle.cuotas}
             accion={aprobarPendiente}
             ocultos={{ pendiente_id: p.id }}
