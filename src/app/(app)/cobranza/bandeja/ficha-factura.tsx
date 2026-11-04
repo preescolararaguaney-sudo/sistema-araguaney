@@ -1,5 +1,5 @@
 import type { PagoPendiente } from "@/lib/queries/bandeja";
-import { formatBs, formatFecha } from "@/lib/format";
+import { formatBs, formatFecha, METODO_PAGO_LABEL } from "@/lib/format";
 
 function Campo({ etiqueta, valor, grande = true }: { etiqueta: string; valor?: string | null; grande?: boolean }) {
   return (
@@ -23,17 +23,25 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
   );
 }
 
+const tasaFormato = (n: number) =>
+  n.toLocaleString("es-VE", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+
 /**
- * Ficha de un pago aprobado con los datos en el orden en que se copian al
- * talonario de factura. Lo que falta queda como una línea para escribir a mano.
+ * Ficha de un pago con los datos en el orden en que se copian al talonario de
+ * factura. Lo que el sistema no tiene queda como una línea para escribir a mano.
  */
 export function FichaFactura({
   pago,
   conceptos,
+  tasa,
 }: {
   pago: PagoPendiente;
   conceptos: string[];
+  // Tasa oficial del BCV vigente el día de la transferencia.
+  tasa: { valor: number; fechaPublicada: string } | null;
 }) {
+  const usd = pago.monto_bs != null && tasa ? pago.monto_bs / tasa.valor : null;
+
   return (
     <article className="mx-auto flex w-full max-w-2xl flex-col gap-5 border-2 border-stone-900 bg-white p-6 print:break-inside-avoid print:border-2">
       <header className="flex items-baseline justify-between bg-stone-100 px-3 py-2">
@@ -61,9 +69,20 @@ export function FichaFactura({
         <div className="grid grid-cols-2 gap-4">
           <Campo etiqueta="Monto en Bs" valor={pago.monto_bs != null ? formatBs(pago.monto_bs) : null} />
           <Campo etiqueta="Fecha de la transferencia" valor={pago.fecha_pago ? formatFecha(pago.fecha_pago) : null} />
-          <Campo etiqueta="N.º de referencia" valor={pago.referencia} />
-          <Campo etiqueta="Banco" valor={pago.banco} />
+          <Campo
+            etiqueta="Tasa BCV del día"
+            valor={tasa ? `${tasaFormato(tasa.valor)}${tasa.fechaPublicada !== pago.fecha_pago ? ` (del ${formatFecha(tasa.fechaPublicada)})` : ""}` : null}
+            grande={false}
+          />
+          <Campo
+            etiqueta="Equivalente en USD"
+            valor={usd != null ? usd.toLocaleString("es-VE", { style: "currency", currency: "USD" }) : null}
+            grande={false}
+          />
+          <Campo etiqueta="Método" valor={pago.metodo ? (METODO_PAGO_LABEL[pago.metodo] ?? pago.metodo) : null} grande={false} />
+          <Campo etiqueta="Banco" valor={pago.banco} grande={false} />
         </div>
+        <Campo etiqueta="N.º de referencia" valor={pago.referencia} />
       </Seccion>
 
       <Seccion titulo="CONCEPTO A ESCRIBIR EN LA FACTURA">

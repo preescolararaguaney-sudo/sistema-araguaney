@@ -71,7 +71,17 @@ export default async function PagoPendientePage({
       <Link href="/cobranza/bandeja" className="text-xs text-stone-500 hover:underline">
         ← Volver a la bandeja
       </Link>
-      <h1 className="mt-1 text-lg font-semibold text-stone-900">Pago recibido por Telegram</h1>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-stone-900">Pago recibido por Telegram</h1>
+        {(p.estado === "pendiente" || p.estado === "aprobado") && (
+          <Link
+            href={`/cobranza/bandeja/${p.id}/ficha`}
+            className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+          >
+            Ver ficha para factura
+          </Link>
+        )}
+      </div>
     </div>
   );
 

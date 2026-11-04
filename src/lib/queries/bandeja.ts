@@ -101,3 +101,15 @@ export async function getConceptosDePago(pagoId: string): Promise<{ descripcion:
     return { descripcion: item?.descripcion ?? "", monto_usd: Number(a.monto_usd_aplicado) };
   });
 }
+
+// Descripciones de las cuotas sugeridas para un pago que aún no se aprobó (ficha de factura).
+export async function getDescripcionesConceptos(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("plan_pago_items")
+    .select("descripcion, fecha_vencimiento")
+    .in("id", ids)
+    .order("fecha_vencimiento", { ascending: true });
+  return (data ?? []).map((c) => c.descripcion);
+}
