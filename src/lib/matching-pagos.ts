@@ -189,6 +189,20 @@ export function candidatoClaro(candidatos: Candidato[]): Candidato | null {
   return primero;
 }
 
+const ABREVIATURAS_MES: Record<string, number> = {
+  ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6, jul: 7, ago: 8, sep: 9, sept: 9, oct: 10, nov: 11, dic: 12,
+};
+
+/** Número del mes (1–12) si alguna palabra del texto es un mes ("octubre", "oct"); 0 si no hay. */
+function detectarMes(texto: string): number {
+  for (const palabra of plano(texto).split(" ")) {
+    const completo = MESES.indexOf(palabra);
+    if (completo >= 0) return completo + 1;
+    if (ABREVIATURAS_MES[palabra]) return ABREVIATURAS_MES[palabra];
+  }
+  return 0;
+}
+
 export type ConceptosSugeridos = { ids: string[]; descripciones: string[] };
 
 /**
@@ -210,8 +224,7 @@ export async function sugerirConceptos(
   const pendientes = data ?? [];
   if (pendientes.length === 0) return { ids: [], descripciones: [] };
 
-  const base = plano(mes ?? "");
-  const indiceMes = base.length >= 3 ? MESES.findIndex((m) => m.startsWith(base.slice(0, 3))) + 1 : 0;
+  const indiceMes = detectarMes(mes ?? "");
   if (indiceMes > 0) {
     const deEseMes = pendientes.find(
       (p) => p.mes_referencia && Number(String(p.mes_referencia).slice(5, 7)) === indiceMes,

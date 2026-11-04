@@ -69,9 +69,99 @@ export async function procesarUpdate(update: TgUpdate): Promise<void> {
   const archivo = elegirArchivo(msg);
   if (archivo) return procesarCapture(msg, archivo);
 
-  if (msg.text) {
-    await enviarMensaje(msg.chat.id, AYUDA);
+  if (msg.text) return procesarTexto(msg, msg.text.trim());
+}
+
+// Ventana en la que un texto se considera la nota del último capture enviado.
+const VENTANA_NOTA_MS = 15 * 60 * 1000;
+
+/**
+ * Lo normal es mandar el capture y, justo después, otro mensaje con el nombre
+ * del alumno. Ese texto se toma como la nota del último capture pendiente del
+ * mismo chat (si es de los últimos 15 minutos) y se vuelve a buscar al alumno.
+ */
+async function procesarTexto(msg: TgMessage, texto: string): Promise<void> {
+  const chatId = msg.chat.id;
+  if (!texto || /^\/(start|ayuda|help)\b/i.test(texto)) {
+    await enviarMensaje(chatId, AYUDA);
+    return;
   }
+
+  const admin = createAdminClient();
+  const desde = new Date(Date.now() - VENTANA_NOTA_MS).toISOString();
+  const { data: filas } = await admin
+    .from("pagos_pendientes")
+    .select("id, nota, lectura, matricula_id")
+    .eq("telegram_chat_id", chatId)
+    .eq("estado", "pendiente")
+    .gte("creado_en", desde)
+    .order("creado_en", { ascending: false })
+    .limit(1);
+  const fila = filas?.[0];
+
+  if (!fila) {
+    await enviarMensaje(
+      chatId,
+      "No tengo un capture reciente al que ponerle esa nota. Mándame primero el capture del pago y luego el nombre del alumno.",
+      msg.message_id,
+    );
+    return;
+  }
+
+  const lectura = (fila.lectura ?? null) as Lectura | null;
+  const nota = [fila.nota, texto].filter(Boolean).join(" ");
+  const candidatos = await buscarCandidatos([nota, lectura?.alumno_en_nota, lectura?.descripcion], {
+    nombre: lectura?.emisor_nombre,
+    cedula: lectura?.emisor_cedula,
+  });
+  const claro = candidatoClaro(candidatos);
+  const enlace = `${BASE_URL}/cobranza/bandeja/${fila.id}`;
+
+  if (!claro) {
+    await admin.from("pagos_pendientes").update({ nota }).eq("id", fila.id);
+    await enviarMensaje(
+      chatId,
+      fila.matricula_id
+        ? `Anotado ✅\n${enlace}`
+        : `Guardé la nota, pero no pude identificar al alumno${
+            candidatos.length ? ` (posibles: ${candidatos.slice(0, 3).map((c) => c.alumnoNombre).join("; ")})` : ""
+          }. Lo eliges en el sistema:\n${enlace}`,
+      msg.message_id,
+    );
+    return;
+  }
+
+  const conceptos = await sugerirConceptos(claro.matriculaId, `${texto} ${lectura?.mes_en_nota ?? ""}`);
+  const cambioAlumno = fila.matricula_id !== claro.matriculaId;
+  const destinatario = destinatarioFactura(claro);
+  await admin
+    .from("pagos_pendientes")
+    .update({
+      nota,
+      matricula_id: claro.matriculaId,
+      conceptos_sugeridos: conceptos.ids,
+      ...(cambioAlumno
+        ? {
+            factura_nombre: destinatario?.nombre ?? null,
+            factura_cedula: destinatario?.cedula ?? null,
+            factura_telefono: destinatario?.telefono ?? null,
+          }
+        : {}),
+    })
+    .eq("id", fila.id);
+
+  await enviarMensaje(
+    chatId,
+    [
+      "Listo ✅",
+      `Alumno: ${claro.alumnoNombre} (${claro.aula})`,
+      conceptos.descripciones.length ? `Concepto: ${conceptos.descripciones.join(", ")}` : null,
+      enlace,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    msg.message_id,
+  );
 }
 
 async function procesarCapture(
