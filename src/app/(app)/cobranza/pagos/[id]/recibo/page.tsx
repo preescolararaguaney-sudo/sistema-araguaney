@@ -5,6 +5,7 @@ import { formatBs, formatFecha, formatUsd, METODO_PAGO_LABEL } from "@/lib/forma
 import { PrintButton } from "./print-button";
 import { AnularForm } from "./anular-form";
 import { ComprobanteForm } from "./comprobante-form";
+import { FacturaPagoForm } from "./factura-form";
 
 export default async function ReciboPage({
   params,
@@ -75,6 +76,17 @@ export default async function ReciboPage({
 
       <div className="mx-auto w-full max-w-md">
         <ComprobanteForm pagoId={recibo.id} comprobanteUrl={recibo.comprobante_url} />
+      </div>
+
+      <div className="mx-auto w-full max-w-md">
+        <FacturaPagoForm
+          pagoId={recibo.id}
+          nombre={recibo.factura_nombre}
+          cedula={recibo.factura_cedula}
+          telefono={recibo.factura_telefono}
+          numero={recibo.factura_numero}
+          control={recibo.factura_control}
+        />
       </div>
 
       {!recibo.anulado && (

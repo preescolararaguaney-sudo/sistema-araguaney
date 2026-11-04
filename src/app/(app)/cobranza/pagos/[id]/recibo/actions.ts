@@ -63,3 +63,46 @@ export async function actualizarComprobante(
   revalidatePath(`/cobranza/pagos/${pagoId}/recibo`);
   return undefined;
 }
+
+// Datos de a quién se factura este pago y el n.º de la factura/control del
+// talonario: sirve para cualquier pago, entre por Telegram, el formulario
+// público o la carga manual.
+export async function guardarFacturaPago(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRol(["directora", "administracion"]);
+  const supabase = await createClient();
+
+  const pagoId = String(formData.get("pago_id") ?? "");
+  if (!pagoId) return { error: "Falta el pago." };
+  const texto = (campo: string) => String(formData.get(campo) ?? "").trim() || null;
+
+  const { error } = await supabase
+    .from("pagos")
+    .update({
+      factura_nombre: texto("factura_nombre"),
+      factura_cedula: texto("factura_cedula"),
+      factura_telefono: texto("factura_telefono"),
+      factura_numero: texto("factura_numero"),
+      factura_control: texto("factura_control"),
+    })
+    .eq("id", pagoId);
+
+  if (error) return { error: `No se pudo guardar: ${error.message}` };
+
+  // Si el pago vino de la bandeja de Telegram, se mantiene al día su ficha.
+  await supabase
+    .from("pagos_pendientes")
+    .update({
+      factura_nombre: texto("factura_nombre"),
+      factura_cedula: texto("factura_cedula"),
+      factura_telefono: texto("factura_telefono"),
+      factura_numero: texto("factura_numero"),
+      factura_control: texto("factura_control"),
+    })
+    .eq("pago_id", pagoId);
+
+  revalidatePath(`/cobranza/pagos/${pagoId}/recibo`);
+  return undefined;
+}

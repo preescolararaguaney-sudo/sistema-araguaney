@@ -45,6 +45,11 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["directora", "administracion"],
   },
   {
+    href: "/cobranza/pagos/reporte",
+    label: "Pagos recibidos",
+    roles: ["directora", "administracion"],
+  },
+  {
     href: "/cobranza/estado-cuenta",
     label: "Estado de cuenta",
     roles: ["directora", "administracion"],

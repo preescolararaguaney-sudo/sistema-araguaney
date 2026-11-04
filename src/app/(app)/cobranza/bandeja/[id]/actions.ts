@@ -172,15 +172,28 @@ export async function guardarNumeroFactura(
   const supabase = await createClient();
 
   const id = texto(formData, "pendiente_id");
-  const { error } = await supabase
+  const { data: fila, error } = await supabase
     .from("pagos_pendientes")
     .update({
       factura_numero: texto(formData, "factura_numero") || null,
       factura_control: texto(formData, "factura_control") || null,
     })
     .eq("id", id)
-    .eq("estado", "aprobado");
+    .eq("estado", "aprobado")
+    .select("pago_id")
+    .maybeSingle();
   if (error) return { error: `No se pudo guardar: ${error.message}` };
+
+  // El pago real es el registro único: el n.º de factura también se guarda ahí.
+  if (fila?.pago_id) {
+    await supabase
+      .from("pagos")
+      .update({
+        factura_numero: texto(formData, "factura_numero") || null,
+        factura_control: texto(formData, "factura_control") || null,
+      })
+      .eq("id", fila.pago_id);
+  }
 
   revalidatePath(`/cobranza/bandeja/${id}`);
   return undefined;

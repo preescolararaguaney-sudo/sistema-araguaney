@@ -16,6 +16,11 @@ export type ReciboDetalle = {
   alumno_nombre: string;
   alumno_apellido: string;
   representante_nombre: string;
+  factura_nombre: string | null;
+  factura_cedula: string | null;
+  factura_telefono: string | null;
+  factura_numero: string | null;
+  factura_control: string | null;
   aplicaciones: { descripcion: string; monto_usd_aplicado: number }[];
 };
 
@@ -27,6 +32,7 @@ export async function getReciboDetalle(pagoId: string): Promise<ReciboDetalle | 
     .select(
       `id, numero_recibo, fecha_pago, monto_usd_total, monto_bs_total, tasa_bcv_valor,
        metodo, referencia, comprobante_url, anulado, motivo_anulacion,
+       factura_nombre, factura_cedula, factura_telefono, factura_numero, factura_control,
        matricula:matriculas!inner(
          alumno:alumnos!inner(
            nombre, apellido,
@@ -70,6 +76,11 @@ export async function getReciboDetalle(pagoId: string): Promise<ReciboDetalle | 
     alumno_nombre: alumno?.nombre ?? "",
     alumno_apellido: alumno?.apellido ?? "",
     representante_nombre: persona ? `${persona.nombre} ${persona.apellido}` : "",
+    factura_nombre: pago.factura_nombre,
+    factura_cedula: pago.factura_cedula,
+    factura_telefono: pago.factura_telefono,
+    factura_numero: pago.factura_numero,
+    factura_control: pago.factura_control,
     aplicaciones: (aplicaciones ?? []).map((a) => {
       const item = Array.isArray(a.plan_item) ? a.plan_item[0] : a.plan_item;
       return {
