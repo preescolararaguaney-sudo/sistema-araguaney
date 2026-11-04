@@ -54,9 +54,14 @@ export function PagoForm({
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set(inicial?.conceptoIds ?? []));
 
   const pendientes = cuotas.filter((c) => c.estado !== "pagado");
+  // Lo que falta de lo seleccionado, a precio de la moneda en que se paga: en
+  // bolívares algunas cuotas valen más (ej. $150 en vez de $130).
   const saldoSeleccionado = pendientes
     .filter((c) => seleccionados.has(c.id))
-    .reduce((acc, c) => acc + (c.monto_usd - c.monto_usd_pagado), 0);
+    .reduce(
+      (acc, c) => acc + (c.monto_usd - c.monto_usd_pagado) / (moneda === "BS" ? (c.factor_bs ?? 1) : 1),
+      0,
+    );
 
   const equivalente = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto * tasa;
 
@@ -114,7 +119,9 @@ export function PagoForm({
                 {c.descripcion}
               </span>
               <span className="text-xs text-stone-500">
-                Saldo {(c.monto_usd - c.monto_usd_pagado).toFixed(2)} USD
+                Saldo{" "}
+                {((c.monto_usd - c.monto_usd_pagado) / (moneda === "BS" ? (c.factor_bs ?? 1) : 1)).toFixed(2)} USD
+                {moneda === "BS" && (c.factor_bs ?? 1) !== 1 && " en Bs"}
               </span>
             </label>
           ))}
@@ -124,7 +131,7 @@ export function PagoForm({
         </div>
         {seleccionados.size > 0 && (
           <p className="mt-1 text-xs text-stone-500">
-            Saldo de lo seleccionado: {saldoSeleccionado.toFixed(2)} USD
+            Saldo de lo seleccionado{moneda === "BS" ? " pagando en bolívares" : " pagando en dólares"}: {saldoSeleccionado.toFixed(2)} USD
             {tasa > 0 && ` (≈ ${(saldoSeleccionado * tasa).toFixed(2)} Bs)`}
           </p>
         )}

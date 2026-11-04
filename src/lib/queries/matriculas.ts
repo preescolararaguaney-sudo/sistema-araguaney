@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { factorDeCuota, getFactoresBs } from "@/lib/precios-bs";
 
 export type MatriculaResultado = {
   matricula_id: string;
@@ -78,6 +79,9 @@ export type CuotaPlan = {
   monto_usd_pagado: number;
   fecha_vencimiento: string;
   estado: "pendiente" | "parcial" | "pagado";
+  // Precio en USD ÷ precio si se paga en Bs (ej. 130 ÷ 150). 1 = sin recargo.
+  // Lo que falta pagar "en bolívares" es el saldo ÷ este factor.
+  factor_bs?: number;
 };
 
 export type MatriculaDetalle = {
@@ -134,6 +138,8 @@ export async function getMatriculaDetalle(
     .eq("matricula_id", matriculaId)
     .order("fecha_vencimiento", { ascending: true });
 
+  const factores = await getFactoresBs(supabase, matriculaId);
+
   return {
     matricula_id: matricula.id,
     alumno_nombre: alumno?.nombre ?? "",
@@ -146,6 +152,7 @@ export async function getMatriculaDetalle(
       ...c,
       monto_usd: Number(c.monto_usd),
       monto_usd_pagado: Number(c.monto_usd_pagado),
+      factor_bs: factorDeCuota(c.tipo, factores),
     })),
   };
 }

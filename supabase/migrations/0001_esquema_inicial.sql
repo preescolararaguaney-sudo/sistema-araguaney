@@ -110,6 +110,9 @@ create table precios (
   anio_escolar_id uuid not null references anios_escolares(id) on delete cascade,
   concepto concepto_precio not null,
   monto_usd numeric(10,2) not null check (monto_usd > 0),
+  -- Precio en USD que se exige si el pago se hace en bolívares (ej. mensualidad:
+  -- 130 en dólares, 150 en bolívares al BCV del día). Null = igual en cualquier moneda.
+  monto_usd_si_paga_en_bs numeric(10,2) check (monto_usd_si_paga_en_bs is null or monto_usd_si_paga_en_bs > 0),
   vigente_desde date not null,
   creado_por uuid references perfiles(id),
   creado_en timestamptz not null default now()
@@ -468,6 +471,16 @@ create table pagos (
   -- llenando `registrado_por` como siempre.
   registrado_por uuid references perfiles(id),
   registrado_por_nombre text,
+  -- Lo que de verdad se recibió y a quién se le factura (migración 0003).
+  moneda_pago text check (moneda_pago in ('BS', 'USD')),
+  monto_bs_pagado numeric(14,2),
+  banco text,
+  factura_nombre text,
+  factura_cedula text,
+  factura_telefono text,
+  factura_direccion text,
+  factura_numero text,
+  factura_control text,
   creado_en timestamptz not null default now(),
   constraint chk_anulacion_con_motivo check (not anulado or motivo_anulacion is not null),
   constraint chk_pago_tiene_registrador check (registrado_por is not null or registrado_por_nombre is not null)

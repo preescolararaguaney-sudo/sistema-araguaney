@@ -48,6 +48,9 @@ function agruparAgosto(cuotas: CuotaPlan[]) {
 export function TablaCuotas({ cuotas }: { cuotas: CuotaPlan[] }) {
   const hoy = hoyCaracas();
   const grupos = agruparAgosto(cuotas);
+  // Si alguna cuota cuesta distinto en bolívares (ej. $150 en vez de $130), se
+  // muestra también cuánto falta pagando en bolívares.
+  const hayRecargoBs = cuotas.some((c) => (c.factor_bs ?? 1) !== 1);
 
   return (
     <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
@@ -59,12 +62,13 @@ export function TablaCuotas({ cuotas }: { cuotas: CuotaPlan[] }) {
             <th className="px-4 py-2 font-medium">Monto</th>
             <th className="px-4 py-2 font-medium">Pagado</th>
             <th className="px-4 py-2 font-medium">Saldo</th>
+            {hayRecargoBs && <th className="px-4 py-2 font-medium">Saldo pagando en Bs</th>}
             <th className="px-4 py-2 font-medium">Estado</th>
           </tr>
         </thead>
         <tbody>
           {grupos.map((g, gi) => (
-            <FragmentoGrupo key={gi} titulo={g.titulo} items={g.items} hoy={hoy} />
+            <FragmentoGrupo key={gi} titulo={g.titulo} items={g.items} hoy={hoy} hayRecargoBs={hayRecargoBs} />
           ))}
         </tbody>
       </table>
@@ -76,16 +80,18 @@ function FragmentoGrupo({
   titulo,
   items,
   hoy,
+  hayRecargoBs,
 }: {
   titulo: string;
   items: CuotaPlan[];
   hoy: string;
+  hayRecargoBs: boolean;
 }) {
   return (
     <>
       {items.length > 1 && (
         <tr className="bg-stone-50">
-          <td colSpan={6} className="px-4 py-1 text-xs font-medium text-stone-500">
+          <td colSpan={hayRecargoBs ? 7 : 6} className="px-4 py-1 text-xs font-medium text-stone-500">
             {titulo}
           </td>
         </tr>
@@ -101,6 +107,11 @@ function FragmentoGrupo({
           <td className="px-4 py-2 font-medium">
             {formatUsd(c.monto_usd - c.monto_usd_pagado)}
           </td>
+          {hayRecargoBs && (
+            <td className="px-4 py-2 text-stone-600">
+              {formatUsd((c.monto_usd - c.monto_usd_pagado) / (c.factor_bs ?? 1))}
+            </td>
+          )}
           <td className="px-4 py-2">
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClase(c, hoy)}`}>
               {etiqueta(c, hoy)}

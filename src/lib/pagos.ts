@@ -1,7 +1,15 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { factorDeCuota, getFactoresBs, SIN_RECARGO } from "@/lib/precios-bs";
 
 export type ResultadoPago = { pagoId: string } | { error: string };
+
+export type DatosFacturaPago = {
+  nombre?: string | null;
+  cedula?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+};
 
 export type RegistrarPagoInput = {
   matriculaId: string;
@@ -24,7 +32,16 @@ export type RegistrarPagoInput = {
   // /pagos-publico (sin login).
   registradoPorPerfilId?: string | null;
   registradoPorNombre?: string | null;
+  // Opcionales: banco del comprobante y a quién se le factura (el pago es el
+  // registro único, venga de Telegram, del formulario público o de la carga manual).
+  banco?: string | null;
+  factura?: DatosFacturaPago;
 };
+
+// Los montos en Bs se redondean a centavos de dólar; esta holgura evita rechazar
+// un pago por la diferencia de céntimos de ese redondeo.
+const TOLERANCIA_USD = 0.5;
+const redondear = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * Lógica de negocio de "registrar un pago" (regla de doble moneda, asignación
@@ -32,6 +49,10 @@ export type RegistrarPagoInput = {
  * interno (`/cobranza/pagos/nuevo`, con el cliente normal ligado a RLS) como
  * desde el público (`/pagos-publico`, con el cliente admin/service-role) —
  * ambos deben calcular exactamente igual, así que vive en un solo lugar.
+ *
+ * Regla de precios: la mensualidad vale $130 en dólares y $150 en bolívares.
+ * Un pago en Bs equivalente a X USD (al BCV del día) descuenta X × (130 ÷ 150)
+ * de la cuota; uno en dólares descuenta X completo. Ver `precios-bs.ts`.
  */
 export async function procesarPago(
   supabase: SupabaseClient,
@@ -49,6 +70,8 @@ export async function procesarPago(
     conceptoIds,
     registradoPorPerfilId,
     registradoPorNombre,
+    banco,
+    factura,
   } = input;
 
   if (!matriculaId || !fechaPago || !metodo) {
@@ -70,16 +93,17 @@ export async function procesarPago(
     return { error: "Selecciona a qué concepto(s) se aplica este pago." };
   }
 
+  const enBs = monedaPago === "BS";
+
   // El monto SIEMPRE se guarda en USD (regla de negocio): si el representante
   // pagó en bolívares, se convierte con la tasa del día antes de continuar.
-  const montoUsdTotal =
-    monedaPago === "BS"
-      ? Math.round((montoIngresado / tasaBcv) * 100) / 100
-      : Math.round(montoIngresado * 100) / 100;
+  const montoUsdTotal = enBs
+    ? redondear(montoIngresado / tasaBcv)
+    : redondear(montoIngresado);
 
   const { data: cuotas, error: errorCuotas } = await supabase
     .from("plan_pago_items")
-    .select("id, monto_usd, monto_usd_pagado")
+    .select("id, tipo, monto_usd, monto_usd_pagado")
     .eq("matricula_id", matriculaId)
     .in("id", conceptoIds)
     .neq("estado", "pagado")
@@ -92,15 +116,20 @@ export async function procesarPago(
     return { error: "Los conceptos seleccionados ya no están pendientes. Actualiza la página." };
   }
 
-  const saldos = cuotas.map((c) => ({
-    id: c.id,
-    saldo: Number(c.monto_usd) - Number(c.monto_usd_pagado),
-  }));
-  const totalPendiente = saldos.reduce((acc, s) => acc + s.saldo, 0);
+  // Un pago en dólares no tiene recargo; uno en bolívares sí (según el precio del concepto).
+  const factores = enBs ? await getFactoresBs(supabase, matriculaId) : SIN_RECARGO;
 
-  if (montoUsdTotal > totalPendiente + 0.01) {
+  const saldos = cuotas.map((c) => {
+    const saldo = Number(c.monto_usd) - Number(c.monto_usd_pagado);
+    const factor = factorDeCuota(c.tipo, factores);
+    // Cuántos USD (a precio de la moneda del pago) hacen falta para saldar la cuota.
+    return { id: c.id, saldo, factor, necesita: saldo / factor };
+  });
+  const totalNecesario = saldos.reduce((acc, s) => acc + s.necesita, 0);
+
+  if (montoUsdTotal > totalNecesario + TOLERANCIA_USD) {
     return {
-      error: `El monto excede lo pendiente de los conceptos seleccionados (máximo ${totalPendiente.toFixed(2)} USD).`,
+      error: `El monto excede lo pendiente de los conceptos seleccionados (máximo ${redondear(totalNecesario).toFixed(2)} USD${enBs ? " pagando en bolívares" : ""}).`,
     };
   }
 
@@ -130,6 +159,13 @@ export async function procesarPago(
       comprobante_url: comprobanteUrl || null,
       registrado_por: registradoPorPerfilId ?? null,
       registrado_por_nombre: registradoPorNombre?.trim() || null,
+      moneda_pago: monedaPago,
+      monto_bs_pagado: enBs ? redondear(montoIngresado) : null,
+      banco: banco?.trim() || null,
+      factura_nombre: factura?.nombre?.trim() || null,
+      factura_cedula: factura?.cedula?.trim() || null,
+      factura_telefono: factura?.telefono?.trim() || null,
+      factura_direccion: factura?.direccion?.trim() || null,
     })
     .select("id")
     .single();
@@ -139,19 +175,19 @@ export async function procesarPago(
   }
 
   // Asignación greedy: cubre las cuotas más antiguas primero (abono/pago parcial).
+  // `restante` está en USD a precio de la moneda del pago; el crédito que recibe
+  // cada cuota es ese monto × su factor (130 ÷ 150 si fue en Bs).
   let restante = montoUsdTotal;
   const aplicaciones: { pago_id: string; plan_item_id: string; monto_usd_aplicado: number }[] = [];
   for (const s of saldos) {
     if (restante <= 0.001) break;
-    const aplicar = Math.min(s.saldo, restante);
-    if (aplicar > 0.001) {
-      aplicaciones.push({
-        pago_id: pago.id,
-        plan_item_id: s.id,
-        monto_usd_aplicado: Math.round(aplicar * 100) / 100,
-      });
-      restante -= aplicar;
+    const usd = Math.min(s.necesita, restante);
+    const completa = usd >= s.necesita - 0.005;
+    const credito = completa ? redondear(s.saldo) : redondear(usd * s.factor);
+    if (credito > 0.001) {
+      aplicaciones.push({ pago_id: pago.id, plan_item_id: s.id, monto_usd_aplicado: credito });
     }
+    restante -= usd;
   }
 
   const { error: errorAplicaciones } = await supabase

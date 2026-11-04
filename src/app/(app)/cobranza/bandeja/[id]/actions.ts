@@ -46,7 +46,7 @@ export async function aprobarPendiente(
     .update({ estado: "aprobado", revisado_por: perfil.id, revisado_en: new Date().toISOString() })
     .eq("id", id)
     .eq("estado", "pendiente")
-    .select("comprobante_url")
+    .select("comprobante_url, banco")
     .maybeSingle();
   if (!reclamada) return { error: "Este pago ya fue procesado." };
 
@@ -67,6 +67,13 @@ export async function aprobarPendiente(
     comprobanteUrl: reclamada.comprobante_url ?? "",
     conceptoIds: formData.getAll("concepto_id").map(String),
     registradoPorPerfilId: perfil.id,
+    banco: reclamada.banco,
+    factura: {
+      nombre: facturaNombre,
+      cedula: facturaCedula,
+      telefono: texto(formData, "factura_telefono"),
+      direccion: texto(formData, "factura_direccion"),
+    },
   });
 
   if ("error" in resultado) {

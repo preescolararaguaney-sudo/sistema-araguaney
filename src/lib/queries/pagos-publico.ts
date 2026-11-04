@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { MatriculaDetalle, CuotaPlan } from "@/lib/queries/matriculas";
+import { factorDeCuota, getFactoresBs } from "@/lib/precios-bs";
 
 // Todas las funciones de este archivo usan el cliente service-role porque
 // corren desde /pagos-publico (sin login): las tablas matriculas/alumnos/
@@ -103,6 +104,8 @@ export async function getMatriculaDetallePublico(
     .eq("matricula_id", matriculaId)
     .order("fecha_vencimiento", { ascending: true });
 
+  const factores = await getFactoresBs(admin, matriculaId);
+
   return {
     matricula_id: matricula.id,
     alumno_nombre: alumno?.nombre ?? "",
@@ -111,7 +114,10 @@ export async function getMatriculaDetallePublico(
     anio_escolar_nombre: anioEscolar?.nombre ?? "",
     representante_nombre: persona ? `${persona.nombre} ${persona.apellido}` : "— (sin cargar)",
     representante_telefono: persona?.telefono ?? null,
-    cuotas: (cuotas ?? []) as CuotaPlan[],
+    cuotas: ((cuotas ?? []) as CuotaPlan[]).map((c) => ({
+      ...c,
+      factor_bs: factorDeCuota(c.tipo, factores),
+    })),
   };
 }
 
