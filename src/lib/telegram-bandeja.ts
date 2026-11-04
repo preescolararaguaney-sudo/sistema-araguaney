@@ -72,13 +72,14 @@ export async function procesarUpdate(update: TgUpdate): Promise<void> {
   if (msg.text) return procesarTexto(msg, msg.text.trim());
 }
 
-// Ventana en la que un texto se considera la nota del último capture enviado.
+// Ventana en la que un texto y un capture se consideran del mismo pago.
 const VENTANA_NOTA_MS = 15 * 60 * 1000;
 
 /**
- * Lo normal es mandar el capture y, justo después, otro mensaje con el nombre
- * del alumno. Ese texto se toma como la nota del último capture pendiente del
- * mismo chat (si es de los últimos 15 minutos) y se vuelve a buscar al alumno.
+ * Un texto puede llegar DESPUÉS del capture (se toma como su nota y se vuelve
+ * a buscar al alumno) o ANTES (se guarda como nota en espera y se une al
+ * próximo capture). Si el último capture de los últimos 15 minutos aún no
+ * tiene alumno, el texto es para ese; si no, es para el que viene.
  */
 async function procesarTexto(msg: TgMessage, texto: string): Promise<void> {
   const chatId = msg.chat.id;
@@ -94,17 +95,27 @@ async function procesarTexto(msg: TgMessage, texto: string): Promise<void> {
     .select("id, nota, lectura, matricula_id")
     .eq("telegram_chat_id", chatId)
     .eq("estado", "pendiente")
+    .neq("origen", "nota")
     .gte("creado_en", desde)
     .order("creado_en", { ascending: false })
     .limit(1);
   const fila = filas?.[0];
 
-  if (!fila) {
-    await enviarMensaje(
-      chatId,
-      "No tengo un capture reciente al que ponerle esa nota. Mándame primero el capture del pago y luego el nombre del alumno.",
-      msg.message_id,
-    );
+  if (!fila || fila.matricula_id) {
+    // El texto llegó antes que su capture: se guarda como nota en espera.
+    await admin
+      .from("pagos_pendientes")
+      .delete()
+      .eq("telegram_chat_id", chatId)
+      .eq("origen", "nota")
+      .lt("creado_en", desde);
+    await admin.from("pagos_pendientes").insert({
+      origen: "nota",
+      telegram_chat_id: chatId,
+      telegram_message_id: msg.message_id,
+      nota: texto,
+    });
+    await enviarMensaje(chatId, "Anotado ✅ Lo uso con el próximo capture que mandes.", msg.message_id);
     return;
   }
 
@@ -169,8 +180,18 @@ async function procesarCapture(
   archivo: { fileId: string; uniqueId: string },
 ): Promise<void> {
   const chatId = msg.chat.id;
-  const nota = msg.caption ?? "";
   const admin = createAdminClient();
+
+  // Al reenviar desde WhatsApp el texto a veces llega ANTES que la foto: esos
+  // textos quedaron guardados como notas en espera y se unen a este capture.
+  const { data: previas } = await admin
+    .from("pagos_pendientes")
+    .select("id, nota")
+    .eq("telegram_chat_id", chatId)
+    .eq("origen", "nota")
+    .gte("creado_en", new Date(Date.now() - VENTANA_NOTA_MS).toISOString())
+    .order("creado_en", { ascending: true });
+  const nota = [msg.caption, ...(previas ?? []).map((p) => p.nota)].filter(Boolean).join(" ");
 
   const descargado = await descargarArchivo(archivo.fileId);
   if ("error" in descargado) {
@@ -256,6 +277,11 @@ async function procesarCapture(
       await enviarMensaje(chatId, "No pude guardar el pago en la bandeja. Intenta de nuevo.", msg.message_id);
     }
     return;
+  }
+
+  // Las notas en espera ya se usaron en este capture.
+  if (previas?.length) {
+    await admin.from("pagos_pendientes").delete().in("id", previas.map((p) => p.id));
   }
 
   // Confirmación de una línea: qué se leyó y a quién se asoció. Sin preguntas.

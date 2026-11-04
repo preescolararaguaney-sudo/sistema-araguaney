@@ -61,7 +61,13 @@ function aPendiente(f: FilaCruda): PagoPendiente {
 
 export async function getPagosPendientes(estado: string): Promise<PagoPendiente[]> {
   const supabase = await createClient();
-  let consulta = supabase.from("pagos_pendientes").select(COLUMNAS).order("creado_en", { ascending: false }).limit(200);
+  // origen "nota" = texto guardado a la espera de su capture; no es un pago.
+  let consulta = supabase
+    .from("pagos_pendientes")
+    .select(COLUMNAS)
+    .neq("origen", "nota")
+    .order("creado_en", { ascending: false })
+    .limit(200);
   if (estado) consulta = consulta.eq("estado", estado);
   const { data } = await consulta;
   return ((data ?? []) as unknown as FilaCruda[]).map(aPendiente);
@@ -78,6 +84,7 @@ export async function contarPagosPendientes(): Promise<number> {
   const { count } = await supabase
     .from("pagos_pendientes")
     .select("id", { count: "exact", head: true })
+    .neq("origen", "nota")
     .eq("estado", "pendiente");
   return count ?? 0;
 }
