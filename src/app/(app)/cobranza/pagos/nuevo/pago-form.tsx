@@ -20,6 +20,7 @@ export type PagoInicial = {
   referencia?: string;
   metodo?: string;
   conceptoIds?: string[];
+  conceptoLibre?: string;
 };
 
 export function PagoForm({
@@ -52,6 +53,8 @@ export function PagoForm({
   const [consultandoTasa, iniciarConsultaTasa] = useTransition();
   const [errorTasa, setErrorTasa] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set(inicial?.conceptoIds ?? []));
+  const [repartir, setRepartir] = useState(false);
+  const [asignaciones, setAsignaciones] = useState<Record<string, string>>({});
 
   const pendientes = cuotas.filter((c) => c.estado !== "pagado");
   // Lo que falta de lo seleccionado, a precio de la moneda en que se paga: en
@@ -64,6 +67,33 @@ export function PagoForm({
     );
 
   const equivalente = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto * tasa;
+
+  // Lo que se pagó, en USD a precio de la moneda del pago (para repartirlo entre cuotas).
+  const montoUsd = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto;
+  const factorDe = (c: CuotaPlan) => (moneda === "BS" ? (c.factor_bs ?? 1) : 1);
+  const elegidas = pendientes.filter((c) => seleccionados.has(c.id));
+
+  // Reparto sugerido: de la cuota más antigua a la más nueva, igual que sin reparto manual.
+  function repartoAutomatico(): Record<string, string> {
+    let restante = montoUsd;
+    const out: Record<string, string> = {};
+    for (const c of elegidas) {
+      const necesita = (c.monto_usd - c.monto_usd_pagado) / factorDe(c);
+      const usd = Math.max(0, Math.min(necesita, restante));
+      out[c.id] = usd > 0 ? usd.toFixed(2) : "";
+      restante -= usd;
+    }
+    return out;
+  }
+  const sumaRepartida = elegidas.reduce((acc, c) => acc + (Number(asignaciones[c.id]) || 0), 0);
+
+  // Meses anteriores que siguen pendientes y que se darían por pagados: las mensualidades
+  // anteriores a la más antigua de las seleccionadas.
+  const mesesElegidos = elegidas.filter((c) => c.tipo === "mensualidad" && c.mes_referencia).map((c) => c.mes_referencia as string);
+  const mesMasAntiguo = mesesElegidos.length > 0 ? mesesElegidos.reduce((a, b) => (a < b ? a : b)) : null;
+  const mesesAnteriores = mesMasAntiguo
+    ? pendientes.filter((c) => c.tipo === "mensualidad" && c.mes_referencia && c.mes_referencia < mesMasAntiguo)
+    : [];
 
   function alternarConcepto(id: string) {
     setSeleccionados((prev) => {
@@ -136,6 +166,77 @@ export function PagoForm({
           </p>
         )}
       </fieldset>
+
+      {elegidas.length > 1 && (
+        <div className="flex flex-col gap-2 rounded-md border border-stone-200 p-3">
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+            <input
+              type="checkbox"
+              name="repartir"
+              checked={repartir}
+              onChange={(e) => {
+                setRepartir(e.target.checked);
+                if (e.target.checked) setAsignaciones(repartoAutomatico());
+              }}
+            />
+            Repartir el monto entre los conceptos a mano
+          </label>
+          {repartir && (
+            <>
+              <p className="text-xs text-stone-500">
+                Escribe cuántos USD ({moneda === "BS" ? "al precio en bolívares" : "en dólares"}) van a cada concepto. Debe sumar el monto del pago.
+              </p>
+              {elegidas.map((c) => (
+                <label key={c.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span>{c.descripcion}</span>
+                  <input
+                    name={`asignacion_${c.id}`}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={asignaciones[c.id] ?? ""}
+                    onChange={(e) => setAsignaciones((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                    className="w-28 rounded-md border border-stone-300 px-2 py-1 text-right text-sm outline-none focus:border-emerald-600"
+                  />
+                </label>
+              ))}
+              <p className={`text-xs ${Math.abs(sumaRepartida - montoUsd) <= 0.5 ? "text-emerald-700" : "text-amber-700"}`}>
+                Repartido: {sumaRepartida.toFixed(2)} USD de {montoUsd.toFixed(2)} USD del pago.
+                <button type="button" onClick={() => setAsignaciones(repartoAutomatico())} className="ml-2 underline">
+                  Recalcular
+                </button>
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      <label className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-stone-700">
+          Otro concepto (solo si el pago no es una cuota: insignia, fiesta, etc.)
+        </span>
+        <input
+          name="concepto_libre"
+          type="text"
+          defaultValue={inicial?.conceptoLibre}
+          placeholder="Ej. Fiesta de navidad"
+          className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+        />
+        <span className="text-xs text-stone-500">
+          Si no marcas ninguna cuota, el pago se registra y se factura con este concepto, sin descontar deuda.
+        </span>
+      </label>
+
+      {mesesAnteriores.length > 0 && (
+        <label className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <input type="checkbox" name="dar_por_pagados_anteriores" defaultChecked className="mt-0.5" />
+          <span>
+            Dar por pagados los meses anteriores:{" "}
+            <strong>{mesesAnteriores.map((c) => c.descripcion.replace("Mensualidad ", "")).join(", ")}</strong>. Se asume
+            que ya los pagó; quedan asentados como historial y no cuentan como dinero recibido.
+          </span>
+        </label>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Campo label="Fecha de pago" name="fecha_pago" type="date" defaultValue={fechaHoy} />

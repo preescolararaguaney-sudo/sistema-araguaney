@@ -25,6 +25,7 @@ export type PagoPendiente = {
   motivo_rechazo: string | null;
   factura_numero: string | null;
   factura_control: string | null;
+  concepto_libre: string | null;
   lectura: { observaciones?: string | null; descripcion?: string | null } | null;
   alumno_nombre: string | null;
   aula_nombre: string | null;
@@ -33,7 +34,7 @@ export type PagoPendiente = {
 const COLUMNAS = `id, creado_en, estado, nota, enviado_por, comprobante_url, monto_bs, fecha_pago, referencia,
   banco, metodo, emisor_nombre, emisor_cedula, matricula_id, conceptos_sugeridos, factura_nombre,
   factura_cedula, factura_telefono, factura_direccion, pago_id, motivo_rechazo,
-  factura_numero, factura_control, lectura,
+  factura_numero, factura_control, concepto_libre, lectura,
   matricula:matriculas(alumno:alumnos(nombre, apellido), aula:aulas(nombre))`;
 
 type FilaCruda = Omit<PagoPendiente, "monto_bs" | "alumno_nombre" | "aula_nombre"> & {

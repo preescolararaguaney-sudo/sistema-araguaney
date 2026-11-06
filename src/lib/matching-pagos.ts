@@ -137,7 +137,7 @@ export async function buscarCandidatos(
     let puntaje = 0;
     for (const t of tokens) {
       if (palabrasAlumno.includes(t)) puntaje += 2;
-      else if (t.length >= 4 && palabrasAlumno.some((p) => p.startsWith(t))) puntaje += 1;
+      else if (t.length >= 3 && palabrasAlumno.some((p) => p.startsWith(t))) puntaje += 1;
     }
 
     const contactos = f.alumno.alumno_contactos
@@ -181,11 +181,13 @@ export async function buscarCandidatos(
   return candidatos.sort((a, b) => b.puntaje - a.puntaje).slice(0, 5);
 }
 
-// El primero se sugiere solo si saca puntaje suficiente y le gana claramente al segundo.
+// El primero se sugiere solo si saca puntaje suficiente (al menos un apellido o nombre
+// completo) y nadie más empata con él: si dos hermanos o dos niñas con el mismo nombre
+// puntúan igual, no se adivina y se deja elegir en el sistema.
 export function candidatoClaro(candidatos: Candidato[]): Candidato | null {
   const [primero, segundo] = candidatos;
-  if (!primero || primero.puntaje < 3) return null;
-  if (segundo && segundo.puntaje > primero.puntaje - 2) return null;
+  if (!primero || primero.puntaje < 2) return null;
+  if (segundo && segundo.puntaje >= primero.puntaje) return null;
   return primero;
 }
 
@@ -213,6 +215,7 @@ export type ConceptosSugeridos = { ids: string[]; descripciones: string[] };
 export async function sugerirConceptos(
   matriculaId: string,
   mes: string | null | undefined,
+  fechaPago?: string | null,
 ): Promise<ConceptosSugeridos> {
   const admin = createAdminClient();
   const { data } = await admin
@@ -224,7 +227,10 @@ export async function sugerirConceptos(
   const pendientes = data ?? [];
   if (pendientes.length === 0) return { ids: [], descripciones: [] };
 
-  const indiceMes = detectarMes(mes ?? "");
+  // Si el texto no menciona un mes, se asume el mes de la fecha del pago (lo normal es
+  // pagar el mes en curso); si esa cuota no está pendiente, cae en la más antigua.
+  const indiceMes =
+    detectarMes(mes ?? "") || (fechaPago ? Number(String(fechaPago).slice(5, 7)) : 0);
   if (indiceMes > 0) {
     const deEseMes = pendientes.find(
       (p) => p.mes_referencia && Number(String(p.mes_referencia).slice(5, 7)) === indiceMes,

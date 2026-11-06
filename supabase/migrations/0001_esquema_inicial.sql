@@ -481,6 +481,10 @@ create table pagos (
   factura_direccion text,
   factura_numero text,
   factura_control text,
+  -- Migración 0004: concepto que no es una cuota (insignia, fiesta...) y marca de los
+  -- pagos sintéticos que dan por saldados meses anteriores al sistema.
+  concepto_libre text,
+  es_historial boolean not null default false,
   creado_en timestamptz not null default now(),
   constraint chk_anulacion_con_motivo check (not anulado or motivo_anulacion is not null),
   constraint chk_pago_tiene_registrador check (registrado_por is not null or registrado_por_nombre is not null)
@@ -1209,6 +1213,7 @@ create table pagos_pendientes (
   motivo_rechazo text,
   factura_numero text,
   factura_control text,
+  concepto_libre text, -- migración 0004
   creado_en timestamptz not null default now(),
   revisado_por uuid references perfiles(id),
   revisado_en timestamptz,

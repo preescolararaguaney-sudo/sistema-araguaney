@@ -8,9 +8,11 @@ import { tasaBcvParaFecha } from "@/lib/tasa-bcv";
  * oficial del BCV vigente el día de la transferencia.
  */
 export async function datosFicha(pago: PagoPendiente) {
-  const conceptos = pago.pago_id
+  const deCuotas = pago.pago_id
     ? (await getConceptosDePago(pago.pago_id)).map((c) => c.descripcion)
     : await getDescripcionesConceptos(pago.conceptos_sugeridos);
+  // Un pago que no es cuota (insignia, fiesta...) se factura con su concepto libre.
+  const conceptos = deCuotas.length > 0 ? deCuotas : pago.concepto_libre ? [pago.concepto_libre] : [];
 
   const t = pago.fecha_pago ? await tasaBcvParaFecha(pago.fecha_pago) : null;
   const tasa = t && "tasa" in t ? { valor: t.tasa, fechaPublicada: t.fechaTasa } : null;

@@ -9,6 +9,7 @@ export type FiltroPagos = {
   q?: string;
   sinFactura?: boolean;
   incluirAnulados?: boolean;
+  incluirHistorial?: boolean;
 };
 
 export type FilaPago = {
@@ -16,6 +17,7 @@ export type FilaPago = {
   numero_recibo: number;
   fecha_pago: string;
   anulado: boolean;
+  es_historial: boolean;
   alumno: string;
   aula: string;
   facturar_a: string;
@@ -45,6 +47,8 @@ type FilaCruda = {
   numero_recibo: number;
   fecha_pago: string;
   anulado: boolean;
+  es_historial: boolean;
+  concepto_libre: string | null;
   metodo: string;
   moneda_pago: "BS" | "USD" | null;
   banco: string | null;
@@ -87,7 +91,7 @@ export async function getReportePagos(f: FiltroPagos): Promise<FilaPago[]> {
   let consulta = supabase
     .from("pagos")
     .select(
-      `id, numero_recibo, fecha_pago, anulado, metodo, moneda_pago, banco, referencia,
+      `id, numero_recibo, fecha_pago, anulado, es_historial, concepto_libre, metodo, moneda_pago, banco, referencia,
        monto_usd_total, monto_bs_total, monto_bs_pagado, tasa_bcv_valor,
        factura_nombre, factura_cedula, factura_numero, factura_control,
        registrado_por_nombre, comprobante_url,
@@ -102,6 +106,8 @@ export async function getReportePagos(f: FiltroPagos): Promise<FilaPago[]> {
     .limit(2000);
 
   if (!f.incluirAnulados) consulta = consulta.eq("anulado", false);
+  // Los meses que se dan por pagados no son dinero recibido: se ocultan salvo que se pidan.
+  if (!f.incluirHistorial) consulta = consulta.eq("es_historial", false);
   if (f.metodo) consulta = consulta.eq("metodo", f.metodo);
 
   const { data } = await consulta;
@@ -116,6 +122,7 @@ export async function getReportePagos(f: FiltroPagos): Promise<FilaPago[]> {
       numero_recibo: p.numero_recibo,
       fecha_pago: p.fecha_pago,
       anulado: p.anulado,
+      es_historial: p.es_historial,
       alumno: alumno ? `${alumno.apellido} ${alumno.nombre}`.replace(/\s+/g, " ").trim() : "",
       aula: uno(m?.aula)?.nombre ?? "",
       facturar_a: p.factura_nombre ?? "",
@@ -127,10 +134,13 @@ export async function getReportePagos(f: FiltroPagos): Promise<FilaPago[]> {
       monto_bs: moneda === "BS" ? Number(p.monto_bs_pagado ?? p.monto_bs_total) : null,
       tasa: Number(p.tasa_bcv_valor),
       monto_usd: Number(p.monto_usd_total),
-      conceptos: (p.aplicaciones ?? [])
-        .map((a) => uno(a.plan_item)?.descripcion ?? "")
-        .filter(Boolean)
-        .join(" + "),
+      conceptos:
+        (p.aplicaciones ?? [])
+          .map((a) => uno(a.plan_item)?.descripcion ?? "")
+          .filter(Boolean)
+          .join(" + ") ||
+        p.concepto_libre ||
+        "",
       factura_numero: p.factura_numero ?? "",
       factura_control: p.factura_control ?? "",
       registrado_por: uno(p.perfil)?.nombre_completo ?? p.registrado_por_nombre ?? "",
@@ -160,7 +170,7 @@ export type TotalesPagos = {
 };
 
 export function totalesPagos(filas: FilaPago[]): TotalesPagos {
-  const validas = filas.filter((f) => !f.anulado);
+  const validas = filas.filter((f) => !f.anulado && !f.es_historial);
   const enBs = validas.filter((f) => f.moneda === "BS");
   return {
     cantidad: validas.length,
@@ -185,5 +195,6 @@ export function filtroDesdeParams(
     q: p.q || undefined,
     sinFactura: p.sin_factura === "1",
     incluirAnulados: p.anulados === "1",
+    incluirHistorial: p.historial === "1",
   };
 }

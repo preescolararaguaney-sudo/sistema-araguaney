@@ -92,7 +92,7 @@ async function procesarTexto(msg: TgMessage, texto: string): Promise<void> {
   const desde = new Date(Date.now() - VENTANA_NOTA_MS).toISOString();
   const { data: filas } = await admin
     .from("pagos_pendientes")
-    .select("id, nota, lectura, matricula_id")
+    .select("id, nota, lectura, matricula_id, fecha_pago")
     .eq("telegram_chat_id", chatId)
     .eq("estado", "pendiente")
     .neq("origen", "nota")
@@ -142,7 +142,11 @@ async function procesarTexto(msg: TgMessage, texto: string): Promise<void> {
     return;
   }
 
-  const conceptos = await sugerirConceptos(claro.matriculaId, `${texto} ${lectura?.mes_en_nota ?? ""}`);
+  const conceptos = await sugerirConceptos(
+    claro.matriculaId,
+    [texto, lectura?.mes_en_nota, lectura?.descripcion].filter(Boolean).join(" "),
+    fila.fecha_pago,
+  );
   const cambioAlumno = fila.matricula_id !== claro.matriculaId;
   const destinatario = destinatarioFactura(claro);
   await admin
@@ -241,7 +245,7 @@ async function procesarCapture(
   const claro = candidatoClaro(candidatos);
   const destinatario = claro ? destinatarioFactura(claro) : null;
   const conceptos = claro
-    ? await sugerirConceptos(claro.matriculaId, lectura?.mes_en_nota ?? nota)
+    ? await sugerirConceptos(claro.matriculaId, [lectura?.mes_en_nota, lectura?.descripcion, nota].filter(Boolean).join(" "), fechaValida)
     : { ids: [], descripciones: [] };
 
   const { data: fila, error } = await admin

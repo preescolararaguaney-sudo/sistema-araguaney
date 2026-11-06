@@ -26,6 +26,7 @@ export default async function ReportePagosPage({
       q: filtro.q,
       sin_factura: filtro.sinFactura ? "1" : undefined,
       anulados: filtro.incluirAnulados ? "1" : undefined,
+      historial: filtro.incluirHistorial ? "1" : undefined,
     }).filter((e): e is [string, string] => Boolean(e[1])),
   ).toString();
 
@@ -86,6 +87,10 @@ export default async function ReportePagosPage({
           <label className="flex items-center gap-2">
             <input type="checkbox" name="anulados" value="1" defaultChecked={filtro.incluirAnulados} />
             Incluir anulados
+          </label>
+          <label className="flex items-center gap-2" title="Meses que se dieron por pagados al registrar un pago posterior">
+            <input type="checkbox" name="historial" value="1" defaultChecked={filtro.incluirHistorial} />
+            Incluir meses dados por pagados
           </label>
           <button
             type="submit"

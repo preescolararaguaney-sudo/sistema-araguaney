@@ -6,6 +6,7 @@ import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { procesarPago } from "@/lib/pagos";
 import { soloDigitos } from "@/lib/matching-pagos";
+import { leerOpcionesPago } from "@/lib/pagos-form";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -68,6 +69,7 @@ export async function aprobarPendiente(
     conceptoIds: formData.getAll("concepto_id").map(String),
     registradoPorPerfilId: perfil.id,
     banco: reclamada.banco,
+    ...leerOpcionesPago(formData),
     factura: {
       nombre: facturaNombre,
       cedula: facturaCedula,
@@ -101,6 +103,7 @@ export async function aprobarPendiente(
       factura_cedula: facturaCedula,
       factura_telefono: texto(formData, "factura_telefono") || null,
       factura_direccion: texto(formData, "factura_direccion") || null,
+      concepto_libre: texto(formData, "concepto_libre") || null,
     })
     .eq("id", id);
 

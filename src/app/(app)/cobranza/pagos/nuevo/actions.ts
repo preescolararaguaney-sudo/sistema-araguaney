@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hoyCaracas } from "@/lib/format";
 import { procesarPago } from "@/lib/pagos";
 import { subirComprobante } from "@/lib/comprobantes";
+import { leerOpcionesPago } from "@/lib/pagos-form";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -74,6 +75,7 @@ export async function registrarPago(
     comprobanteUrl,
     conceptoIds: formData.getAll("concepto_id").map(String),
     registradoPorPerfilId: perfil.id,
+    ...leerOpcionesPago(formData),
   });
 
   if ("error" in resultado) return resultado;
