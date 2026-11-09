@@ -26,7 +26,7 @@ export type PagoPendiente = {
   factura_numero: string | null;
   factura_control: string | null;
   concepto_libre: string | null;
-  lectura: { observaciones?: string | null; descripcion?: string | null } | null;
+  lectura: { observaciones?: string | null; descripcion?: string | null; alumno_en_nota?: string | null } | null;
   alumno_nombre: string | null;
   aula_nombre: string | null;
 };

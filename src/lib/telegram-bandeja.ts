@@ -304,7 +304,7 @@ async function procesarCapture(
         .join(" · "),
     );
   }
-  partes.push(claro ? `Alumno: ${claro.alumnoNombre} (${claro.aula})` : "Alumno: sin identificar (lo eliges en el sistema)");
+  partes.push(claro ? `Alumno: ${claro.alumnoNombre} (${claro.aula})` : "Alumno: sin identificar (lo eliges o lo creas nuevo en el sistema)");
   partes.push(`${BASE_URL}/cobranza/bandeja/${fila.id}`);
 
   await enviarMensaje(chatId, partes.filter(Boolean).join("\n"), msg.message_id);

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { procesarPago } from "@/lib/pagos";
-import { soloDigitos } from "@/lib/matching-pagos";
+import { soloDigitos, sugerirConceptos } from "@/lib/matching-pagos";
 import { leerOpcionesPago } from "@/lib/pagos-form";
 
 export type ActionState = { error?: string } | undefined;
@@ -200,4 +200,90 @@ export async function guardarNumeroFactura(
 
   revalidatePath(`/cobranza/bandeja/${id}`);
   return undefined;
+}
+
+/**
+ * Regla del colegio: si llega un pago de un alumno que todavía no está registrado, se
+ * incluye (inscrito, con su plan de pagos) y el resto de sus datos se completan después.
+ * Queda ligado a este pago para poder aprobarlo enseguida.
+ */
+export async function crearAlumnoDesdePago(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRol(["directora", "administracion"]);
+  const supabase = await createClient();
+
+  const id = texto(formData, "pendiente_id");
+  const nombre = texto(formData, "alumno_nombre");
+  const apellido = texto(formData, "alumno_apellido");
+  const aulaId = texto(formData, "aula_id");
+  const fechaNacimiento = texto(formData, "fecha_nacimiento");
+
+  if (!id || !nombre || !apellido || !aulaId) {
+    return { error: "Indica nombre, apellido y aula del alumno." };
+  }
+
+  const { data: pago } = await supabase
+    .from("pagos_pendientes")
+    .select("id, nota, fecha_pago, lectura, matricula_id")
+    .eq("id", id)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  if (!pago) return { error: "Este pago ya fue procesado." };
+  if (pago.matricula_id) return { error: "Este pago ya tiene un alumno asignado." };
+
+  const { data: anio } = await supabase
+    .from("anios_escolares")
+    .select("id")
+    .eq("activo", true)
+    .order("fecha_inicio", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!anio) return { error: "No hay un año escolar activo." };
+
+  // Evita duplicar a un alumno que ya existe con ese mismo nombre.
+  const { data: existentes } = await supabase
+    .from("alumnos")
+    .select("id")
+    .ilike("nombre", nombre)
+    .ilike("apellido", apellido)
+    .limit(1);
+  if (existentes && existentes.length > 0) {
+    return { error: "Ya existe un alumno con ese nombre y apellido. Búscalo en lugar de crearlo de nuevo." };
+  }
+
+  const { data: alumno, error: errorAlumno } = await supabase
+    .from("alumnos")
+    .insert({ nombre, apellido, fecha_nacimiento: fechaNacimiento || null })
+    .select("id")
+    .single();
+  if (errorAlumno || !alumno) return { error: `No se pudo crear el alumno: ${errorAlumno?.message}` };
+
+  const { data: matricula, error: errorMatricula } = await supabase
+    .from("matriculas")
+    .insert({ alumno_id: alumno.id, anio_escolar_id: anio.id, aula_id: aulaId, estado: "inscrito" })
+    .select("id")
+    .single();
+  if (errorMatricula || !matricula) return { error: `No se pudo crear la matrícula: ${errorMatricula?.message}` };
+
+  const { error: errorPlan } = await supabase.rpc("generar_plan_pago", { p_matricula_id: matricula.id });
+  if (errorPlan) {
+    return { error: `El alumno se creó, pero falló el plan de pagos: ${errorPlan.message}` };
+  }
+
+  const lectura = (pago.lectura ?? null) as { mes_en_nota?: string | null; descripcion?: string | null } | null;
+  const conceptos = await sugerirConceptos(
+    matricula.id,
+    [pago.nota, lectura?.mes_en_nota, lectura?.descripcion].filter(Boolean).join(" "),
+    pago.fecha_pago,
+  );
+
+  await supabase
+    .from("pagos_pendientes")
+    .update({ matricula_id: matricula.id, conceptos_sugeridos: conceptos.ids })
+    .eq("id", id);
+
+  revalidatePath(`/cobranza/bandeja/${id}`);
+  redirect(`/cobranza/bandeja/${id}`);
 }

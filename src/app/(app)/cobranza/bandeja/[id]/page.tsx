@@ -14,6 +14,26 @@ import { aprobarPendiente } from "./actions";
 import { FacturaCampos } from "./factura-campos";
 import { RechazarForm } from "./rechazar-form";
 import { NumeroFacturaForm } from "./numero-factura-form";
+import { NuevoAlumnoForm } from "./nuevo-alumno-form";
+
+const PALABRAS_QUE_NO_SON_NOMBRE = new Set([
+  "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+  "abono", "pago", "parcial", "mensualidad", "mitad", "otra", "pendiente", "foto", "de", "del", "la", "el", "y", "a",
+  "preescolar", "araguaney", "colegio", "hola", "buen", "buenos", "buenas", "dia", "dias", "tardes", "noches", "mes",
+]);
+
+// Primer intento de nombre y apellido a partir de lo que escribieron junto al capture
+// ("Giada abono noviembre Giada Jaramillo" -> Giada / Jaramillo). Siempre editable.
+function adivinarNombre(texto: string | null | undefined): { nombre: string; apellido: string } {
+  const palabras = (texto ?? "")
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}]/gu, ""))
+    .filter((w) => w && !PALABRAS_QUE_NO_SON_NOMBRE.has(w.toLowerCase()) && !/\.(pdf|jpg|png)$/i.test(w));
+  const unicas = palabras.filter((w, i) => palabras.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i).slice(0, 4);
+  if (unicas.length < 2) return { nombre: unicas[0] ?? "", apellido: "" };
+  const corte = unicas.length >= 3 ? 2 : 1;
+  return { nombre: unicas.slice(0, corte).join(" "), apellido: unicas.slice(corte).join(" ") };
+}
 
 export default async function PagoPendientePage({
   params,
@@ -152,6 +172,8 @@ export default async function PagoPendientePage({
   if (!matriculaId) {
     const busqueda = q ?? p.nota ?? "";
     const resultados = anio ? await buscarMatriculas(busqueda, anio.id) : [];
+    const { data: aulas } = await supabase.from("aulas").select("id, nombre").eq("activa", true).order("nombre");
+    const sugerido = adivinarNombre(`${p.lectura?.alumno_en_nota ?? ""} ${p.nota ?? ""}`);
     return (
       <div className="flex flex-col gap-6">
         {encabezado}
@@ -162,6 +184,12 @@ export default async function PagoPendientePage({
               No pude identificar al alumno. Búscalo para continuar.
             </p>
             <BuscadorAlumno basePath={`/cobranza/bandeja/${p.id}`} q={busqueda} resultados={resultados} />
+            <NuevoAlumnoForm
+              pendienteId={p.id}
+              aulas={aulas ?? []}
+              nombreInicial={sugerido.nombre}
+              apellidoInicial={sugerido.apellido}
+            />
             <RechazarForm id={p.id} />
           </div>
         </div>
