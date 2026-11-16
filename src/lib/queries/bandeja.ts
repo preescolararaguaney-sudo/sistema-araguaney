@@ -26,6 +26,7 @@ export type PagoPendiente = {
   factura_numero: string | null;
   factura_control: string | null;
   concepto_libre: string | null;
+  monto_libre_usd: number | null;
   lectura: { observaciones?: string | null; descripcion?: string | null; alumno_en_nota?: string | null } | null;
   alumno_nombre: string | null;
   aula_nombre: string | null;
@@ -34,11 +35,12 @@ export type PagoPendiente = {
 const COLUMNAS = `id, creado_en, estado, nota, enviado_por, comprobante_url, monto_bs, fecha_pago, referencia,
   banco, metodo, emisor_nombre, emisor_cedula, matricula_id, conceptos_sugeridos, factura_nombre,
   factura_cedula, factura_telefono, factura_direccion, pago_id, motivo_rechazo,
-  factura_numero, factura_control, concepto_libre, lectura,
+  factura_numero, factura_control, concepto_libre, monto_libre_usd, lectura,
   matricula:matriculas(alumno:alumnos(nombre, apellido), aula:aulas(nombre))`;
 
-type FilaCruda = Omit<PagoPendiente, "monto_bs" | "alumno_nombre" | "aula_nombre"> & {
+type FilaCruda = Omit<PagoPendiente, "monto_bs" | "monto_libre_usd" | "alumno_nombre" | "aula_nombre"> & {
   monto_bs: number | string | null;
+  monto_libre_usd: number | string | null;
   matricula:
     | { alumno: { nombre: string; apellido: string } | { nombre: string; apellido: string }[] | null; aula: { nombre: string } | { nombre: string }[] | null }
     | { alumno: { nombre: string; apellido: string } | { nombre: string; apellido: string }[] | null; aula: { nombre: string } | { nombre: string }[] | null }[]
@@ -55,6 +57,7 @@ function aPendiente(f: FilaCruda): PagoPendiente {
   return {
     ...resto,
     monto_bs: f.monto_bs == null ? null : Number(f.monto_bs),
+    monto_libre_usd: f.monto_libre_usd == null ? null : Number(f.monto_libre_usd),
     alumno_nombre: alumno ? `${alumno.nombre} ${alumno.apellido}`.replace(/\s+/g, " ").trim() : null,
     aula_nombre: uno(m?.aula)?.nombre ?? null,
   };

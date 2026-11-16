@@ -93,14 +93,24 @@ export default async function PagoPendientePage({
       </Link>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold text-stone-900">Pago recibido por Telegram</h1>
-        {(p.estado === "pendiente" || p.estado === "aprobado") && (
-          <Link
-            href={`/cobranza/bandeja/${p.id}/ficha`}
-            className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
-          >
-            Ver ficha para factura
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {p.estado === "pendiente" && (
+            <Link
+              href={`/cobranza/bandeja/${p.id}/dividir`}
+              className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+            >
+              Dividir entre alumnos
+            </Link>
+          )}
+          {(p.estado === "pendiente" || p.estado === "aprobado") && (
+            <Link
+              href={`/cobranza/bandeja/${p.id}/ficha`}
+              className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+            >
+              Ver ficha para factura
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

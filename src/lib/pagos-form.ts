@@ -8,6 +8,7 @@ import "server-only";
 export function leerOpcionesPago(formData: FormData) {
   const conceptoLibre = String(formData.get("concepto_libre") ?? "").trim() || null;
   const darPorPagadosAnteriores = formData.get("dar_por_pagados_anteriores") === "on";
+  const montoLibreUsd = Number(formData.get("monto_libre_usd")) || null;
 
   const asignaciones: { conceptoId: string; montoUsd: number }[] = [];
   if (formData.get("repartir") === "on") {
@@ -20,5 +21,5 @@ export function leerOpcionesPago(formData: FormData) {
     }
   }
 
-  return { conceptoLibre, darPorPagadosAnteriores, asignaciones };
+  return { conceptoLibre, montoLibreUsd, darPorPagadosAnteriores, asignaciones };
 }

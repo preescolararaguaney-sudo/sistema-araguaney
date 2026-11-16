@@ -14,6 +14,10 @@ export type Candidato = {
   madre: PersonaFactura | null;
   padre: PersonaFactura | null;
   puntaje: number;
+  // Cuántas palabras del texto coinciden con este alumno, y cuántas palabras de nombre
+  // trae el texto en total (para no escoger a quien solo coincide en el nombre de pila).
+  coincidencias: number;
+  tokensTotal: number;
 };
 
 const MESES = [
@@ -135,9 +139,15 @@ export async function buscarCandidatos(
     const palabrasAlumno = plano(`${f.alumno.nombre} ${f.alumno.apellido}`).split(" ");
 
     let puntaje = 0;
+    let coincidencias = 0;
     for (const t of tokens) {
-      if (palabrasAlumno.includes(t)) puntaje += 2;
-      else if (t.length >= 3 && palabrasAlumno.some((p) => p.startsWith(t))) puntaje += 1;
+      if (palabrasAlumno.includes(t)) {
+        puntaje += 2;
+        coincidencias += 1;
+      } else if (t.length >= 3 && palabrasAlumno.some((p) => p.startsWith(t))) {
+        puntaje += 1;
+        coincidencias += 1;
+      }
     }
 
     const contactos = f.alumno.alumno_contactos
@@ -175,6 +185,8 @@ export async function buscarCandidatos(
       madre: aPersona("madre"),
       padre: aPersona("padre"),
       puntaje,
+      coincidencias,
+      tokensTotal: tokens.length,
     });
   }
 
@@ -188,6 +200,10 @@ export function candidatoClaro(candidatos: Candidato[]): Candidato | null {
   const [primero, segundo] = candidatos;
   if (!primero || primero.puntaje < 2) return null;
   if (segundo && segundo.puntaje >= primero.puntaje) return null;
+  // Si escribieron nombre y apellido pero solo uno coincide (típicamente el nombre de pila,
+  // porque el apellido que escribieron no existe), es otro alumno que no está registrado:
+  // no se adivina. Una coincidencia por cédula del que transfirió (puntaje >= 6) sí basta.
+  if (primero.tokensTotal >= 2 && primero.coincidencias < 2 && primero.puntaje < 6) return null;
   return primero;
 }
 

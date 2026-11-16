@@ -21,6 +21,7 @@ export type PagoInicial = {
   metodo?: string;
   conceptoIds?: string[];
   conceptoLibre?: string;
+  montoLibreUsd?: number;
 };
 
 export function PagoForm({
@@ -53,6 +54,7 @@ export function PagoForm({
   const [consultandoTasa, iniciarConsultaTasa] = useTransition();
   const [errorTasa, setErrorTasa] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set(inicial?.conceptoIds ?? []));
+  const [montoLibre, setMontoLibre] = useState(inicial?.montoLibreUsd ? String(inicial.montoLibreUsd) : "");
   const [repartir, setRepartir] = useState(false);
   const [asignaciones, setAsignaciones] = useState<Record<string, string>>({});
 
@@ -69,7 +71,10 @@ export function PagoForm({
   const equivalente = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto * tasa;
 
   // Lo que se pagó, en USD a precio de la moneda del pago (para repartirlo entre cuotas).
-  const montoUsd = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto;
+  const montoUsdPago = moneda === "BS" ? (tasa > 0 ? monto / tasa : 0) : monto;
+  // La parte que es de un concepto libre (fiesta, helado...) no va a las cuotas.
+  const libreUsd = Math.min(Number(montoLibre) || 0, montoUsdPago);
+  const montoUsd = Math.max(0, montoUsdPago - libreUsd);
   const factorDe = (c: CuotaPlan) => (moneda === "BS" ? (c.factor_bs ?? 1) : 1);
   const elegidas = pendientes.filter((c) => seleccionados.has(c.id));
 
@@ -213,17 +218,31 @@ export function PagoForm({
 
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium text-stone-700">
-          Otro concepto (solo si el pago no es una cuota: insignia, fiesta, etc.)
+          Otro concepto (lo que no es cuota: fiesta, helado, insignia...)
         </span>
-        <input
-          name="concepto_libre"
-          type="text"
-          defaultValue={inicial?.conceptoLibre}
-          placeholder="Ej. Fiesta de navidad"
-          className="rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
-        />
+        <div className="flex gap-2">
+          <input
+            name="concepto_libre"
+            type="text"
+            defaultValue={inicial?.conceptoLibre}
+            placeholder="Ej. Fiesta de navidad"
+            className="flex-1 rounded-md border border-stone-300 px-3 py-1.5 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+          />
+          <input
+            name="monto_libre_usd"
+            type="number"
+            step="0.01"
+            min="0"
+            value={montoLibre}
+            onChange={(e) => setMontoLibre(e.target.value)}
+            placeholder="USD"
+            title="Cuántos USD del pago son de este concepto"
+            className="w-24 rounded-md border border-stone-300 px-2 py-1.5 text-right text-sm outline-none focus:border-emerald-600"
+          />
+        </div>
         <span className="text-xs text-stone-500">
-          Si no marcas ninguna cuota, el pago se registra y se factura con este concepto, sin descontar deuda.
+          Si marcas cuotas, escribe cuántos USD del pago son de este concepto (el resto va a las cuotas). Si no
+          marcas ninguna, todo el pago es de este concepto y no descuenta deuda.
         </span>
       </label>
 

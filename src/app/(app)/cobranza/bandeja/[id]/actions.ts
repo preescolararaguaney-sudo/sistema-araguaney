@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { procesarPago } from "@/lib/pagos";
-import { soloDigitos, sugerirConceptos } from "@/lib/matching-pagos";
+import { destinatarioDeMatricula, soloDigitos, sugerirConceptos } from "@/lib/matching-pagos";
 import { leerOpcionesPago } from "@/lib/pagos-form";
 
 export type ActionState = { error?: string } | undefined;
@@ -104,6 +104,7 @@ export async function aprobarPendiente(
       factura_telefono: texto(formData, "factura_telefono") || null,
       factura_direccion: texto(formData, "factura_direccion") || null,
       concepto_libre: texto(formData, "concepto_libre") || null,
+      monto_libre_usd: Number(formData.get("monto_libre_usd")) || null,
     })
     .eq("id", id);
 
@@ -285,5 +286,72 @@ export async function crearAlumnoDesdePago(
     .eq("id", id);
 
   revalidatePath(`/cobranza/bandeja/${id}`);
+  redirect(`/cobranza/bandeja/${id}`);
+}
+
+/**
+ * Un mismo pago puede cubrir a varios hermanos (una sola transferencia para dos niños).
+ * Cada alumno necesita su propio pago, así que esto separa una parte del monto en un pago
+ * nuevo para el otro alumno: misma referencia y mismo capture, con su monto en Bs.
+ */
+export async function dividirPendiente(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireRol(["directora", "administracion"]);
+  const supabase = await createClient();
+
+  const id = texto(formData, "pendiente_id");
+  const matriculaId = texto(formData, "matricula_id");
+  const parteBs = Math.round(Number(formData.get("monto_bs")) * 100) / 100;
+  if (!id || !matriculaId || !(parteBs > 0)) return { error: "Indica el alumno y cuántos Bs son de él." };
+
+  const { data: origen } = await supabase
+    .from("pagos_pendientes")
+    .select("*")
+    .eq("id", id)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  if (!origen) return { error: "Este pago ya fue procesado." };
+  if (origen.matricula_id === matriculaId) return { error: "Elige a un alumno distinto del que ya tiene el pago." };
+  const total = Number(origen.monto_bs);
+  if (!(parteBs < total - 0.005)) return { error: `La parte (${parteBs}) debe ser menor que el pago (${total} Bs).` };
+
+  const lectura = (origen.lectura ?? null) as { mes_en_nota?: string | null; descripcion?: string | null } | null;
+  const conceptos = await sugerirConceptos(
+    matriculaId,
+    [origen.nota, lectura?.mes_en_nota, lectura?.descripcion].filter(Boolean).join(" "),
+    origen.fecha_pago,
+  );
+  const destino = await destinatarioDeMatricula(matriculaId);
+
+  const { error: errorNuevo } = await supabase.from("pagos_pendientes").insert({
+    origen: "telegram",
+    nota: origen.nota,
+    enviado_por: origen.enviado_por,
+    comprobante_url: origen.comprobante_url,
+    lectura: origen.lectura,
+    monto_bs: parteBs,
+    fecha_pago: origen.fecha_pago,
+    referencia: origen.referencia,
+    banco: origen.banco,
+    metodo: origen.metodo,
+    emisor_nombre: origen.emisor_nombre,
+    emisor_cedula: origen.emisor_cedula,
+    matricula_id: matriculaId,
+    conceptos_sugeridos: conceptos.ids,
+    factura_nombre: destino?.nombre ?? null,
+    factura_cedula: destino?.cedula ?? null,
+    factura_telefono: destino?.telefono ?? null,
+  });
+  if (errorNuevo) return { error: `No se pudo crear el pago del otro alumno: ${errorNuevo.message}` };
+
+  const { error: errorOrigen } = await supabase
+    .from("pagos_pendientes")
+    .update({ monto_bs: Math.round((total - parteBs) * 100) / 100 })
+    .eq("id", id);
+  if (errorOrigen) return { error: `Se creó el pago nuevo pero no se pudo reducir el original: ${errorOrigen.message}` };
+
+  revalidatePath("/cobranza/bandeja");
   redirect(`/cobranza/bandeja/${id}`);
 }

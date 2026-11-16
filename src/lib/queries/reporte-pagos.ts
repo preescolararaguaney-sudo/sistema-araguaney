@@ -49,6 +49,7 @@ type FilaCruda = {
   anulado: boolean;
   es_historial: boolean;
   concepto_libre: string | null;
+  monto_libre_usd: number | string | null;
   metodo: string;
   moneda_pago: "BS" | "USD" | null;
   banco: string | null;
@@ -91,7 +92,7 @@ export async function getReportePagos(f: FiltroPagos): Promise<FilaPago[]> {
   let consulta = supabase
     .from("pagos")
     .select(
-      `id, numero_recibo, fecha_pago, anulado, es_historial, concepto_libre, metodo, moneda_pago, banco, referencia,
+      `id, numero_recibo, fecha_pago, anulado, es_historial, concepto_libre, monto_libre_usd, metodo, moneda_pago, banco, referencia,
        monto_usd_total, monto_bs_total, monto_bs_pagado, tasa_bcv_valor,
        factura_nombre, factura_cedula, factura_numero, factura_control,
        registrado_por_nombre, comprobante_url,
@@ -134,13 +135,16 @@ export async function getReportePagos(f: FiltroPagos): Promise<FilaPago[]> {
       monto_bs: moneda === "BS" ? Number(p.monto_bs_pagado ?? p.monto_bs_total) : null,
       tasa: Number(p.tasa_bcv_valor),
       monto_usd: Number(p.monto_usd_total),
-      conceptos:
-        (p.aplicaciones ?? [])
-          .map((a) => uno(a.plan_item)?.descripcion ?? "")
-          .filter(Boolean)
-          .join(" + ") ||
-        p.concepto_libre ||
-        "",
+      conceptos: [
+        ...(p.aplicaciones ?? []).map((a) => uno(a.plan_item)?.descripcion ?? "").filter(Boolean),
+        ...(p.concepto_libre
+          ? [
+              p.monto_libre_usd != null && (p.aplicaciones ?? []).length > 0
+                ? p.concepto_libre + " (USD " + Number(p.monto_libre_usd).toFixed(2) + ")"
+                : p.concepto_libre,
+            ]
+          : []),
+      ].join(" + "),
       factura_numero: p.factura_numero ?? "",
       factura_control: p.factura_control ?? "",
       registrado_por: uno(p.perfil)?.nombre_completo ?? p.registrado_por_nombre ?? "",

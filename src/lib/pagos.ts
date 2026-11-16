@@ -39,6 +39,9 @@ export type RegistrarPagoInput = {
   // Pago de algo que no es una cuota del plan (insignia, fiesta...): se registra y se
   // factura, pero no descuenta deuda. Si hay cuotas elegidas, es solo una nota.
   conceptoLibre?: string | null;
+  // Parte del pago (USD) que es del concepto libre (fiesta, helado...); el resto va a las
+  // cuotas elegidas. Sin cuotas elegidas, todo el pago es del concepto libre.
+  montoLibreUsd?: number | null;
   // Reparto manual del monto entre los conceptos elegidos, en USD a precio de la moneda
   // del pago. Sin esto el monto se aplica de la cuota más antigua a la más nueva.
   asignaciones?: { conceptoId: string; montoUsd: number }[];
@@ -49,7 +52,8 @@ export type RegistrarPagoInput = {
 
 // Los montos en Bs se redondean a centavos de dólar; esta holgura evita rechazar
 // un pago por la diferencia de céntimos de ese redondeo.
-const TOLERANCIA_USD = 0.5;
+// Los representantes suelen redondear los bolívares hacia arriba, por eso hay holgura.
+const TOLERANCIA_USD = 2;
 const redondear = (n: number) => Math.round(n * 100) / 100;
 
 /**
@@ -114,6 +118,15 @@ export async function procesarPago(
     ? redondear(montoIngresado / tasaBcv)
     : redondear(montoIngresado);
 
+  // Cuánto del pago es del concepto libre y cuánto va a las cuotas.
+  const libreUsd = sinCuotas
+    ? montoUsdTotal
+    : redondear(Math.min(Math.max(input.montoLibreUsd ?? 0, 0), montoUsdTotal));
+  if (libreUsd > 0.001 && !conceptoLibre) {
+    return { error: "Escribe el concepto de la parte que no es cuota (fiesta, helado...)." };
+  }
+  const montoCuotasUsd = redondear(montoUsdTotal - libreUsd);
+
   // ---- Qué se aplica a cada cuota (vacío si es un concepto libre) ----
   type Aplicacion = { plan_item_id: string; monto_usd_aplicado: number };
   const aplicaciones: Aplicacion[] = [];
@@ -152,9 +165,9 @@ export async function procesarPago(
       // Reparto indicado a mano: cada concepto recibe exactamente lo que se escribió.
       const porId = new Map(saldos.map((s) => [s.id, s]));
       const suma = repartoManual.reduce((acc, a) => acc + a.montoUsd, 0);
-      if (Math.abs(suma - montoUsdTotal) > TOLERANCIA_USD) {
+      if (Math.abs(suma - montoCuotasUsd) > TOLERANCIA_USD) {
         return {
-          error: `Lo repartido (${redondear(suma).toFixed(2)} USD) no coincide con el monto del pago (${montoUsdTotal.toFixed(2)} USD).`,
+          error: `Lo repartido entre cuotas (${redondear(suma).toFixed(2)} USD) no coincide con la parte del pago que va a cuotas (${montoCuotasUsd.toFixed(2)} USD).`,
         };
       }
       for (const a of repartoManual) {
@@ -170,7 +183,7 @@ export async function procesarPago(
         if (credito > 0.001) aplicaciones.push({ plan_item_id: s.id, monto_usd_aplicado: credito });
       }
     } else {
-      if (montoUsdTotal > totalNecesario + TOLERANCIA_USD) {
+      if (montoCuotasUsd > totalNecesario + TOLERANCIA_USD) {
         return {
           error: `El monto excede lo pendiente de los conceptos seleccionados (máximo ${redondear(totalNecesario).toFixed(2)} USD${enBs ? " pagando en bolívares" : ""}).`,
         };
@@ -178,7 +191,7 @@ export async function procesarPago(
       // Asignación greedy: cubre las cuotas más antiguas primero (abono/pago parcial).
       // `restante` está en USD a precio de la moneda del pago; el crédito que recibe
       // cada cuota es ese monto × su factor (130 ÷ 150 si fue en Bs).
-      let restante = montoUsdTotal;
+      let restante = montoCuotasUsd;
       for (const s of saldos) {
         if (restante <= 0.001) break;
         const usd = Math.min(s.necesita, restante);
@@ -233,6 +246,7 @@ export async function procesarPago(
       factura_telefono: factura?.telefono?.trim() || null,
       factura_direccion: factura?.direccion?.trim() || null,
       concepto_libre: conceptoLibre,
+      monto_libre_usd: libreUsd > 0.001 ? libreUsd : null,
     })
     .select("id")
     .single();

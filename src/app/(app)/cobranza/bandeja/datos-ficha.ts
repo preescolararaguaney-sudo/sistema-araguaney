@@ -11,8 +11,15 @@ export async function datosFicha(pago: PagoPendiente) {
   const deCuotas = pago.pago_id
     ? (await getConceptosDePago(pago.pago_id)).map((c) => c.descripcion)
     : await getDescripcionesConceptos(pago.conceptos_sugeridos);
-  // Un pago que no es cuota (insignia, fiesta...) se factura con su concepto libre.
-  const conceptos = deCuotas.length > 0 ? deCuotas : pago.concepto_libre ? [pago.concepto_libre] : [];
+  // La parte que no es cuota (fiesta, helado, insignia...) se factura con su concepto libre.
+  const libre = pago.concepto_libre
+    ? [
+        deCuotas.length > 0 && pago.monto_libre_usd
+          ? pago.concepto_libre + " (USD " + pago.monto_libre_usd.toFixed(2) + ")"
+          : pago.concepto_libre,
+      ]
+    : [];
+  const conceptos = [...deCuotas, ...libre];
 
   const t = pago.fecha_pago ? await tasaBcvParaFecha(pago.fecha_pago) : null;
   const tasa = t && "tasa" in t ? { valor: t.tasa, fechaPublicada: t.fechaTasa } : null;
