@@ -1,5 +1,6 @@
 "use server";
 
+import { formatoNombre } from "@/lib/formato-nombre";
 import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -81,7 +82,7 @@ export async function guardarFacturaPago(
   const { error } = await supabase
     .from("pagos")
     .update({
-      factura_nombre: texto("factura_nombre"),
+      factura_nombre: formatoNombre(texto("factura_nombre")),
       factura_cedula: texto("factura_cedula"),
       factura_telefono: texto("factura_telefono"),
       factura_numero: texto("factura_numero"),
@@ -95,7 +96,7 @@ export async function guardarFacturaPago(
   await supabase
     .from("pagos_pendientes")
     .update({
-      factura_nombre: texto("factura_nombre"),
+      factura_nombre: formatoNombre(texto("factura_nombre")),
       factura_cedula: texto("factura_cedula"),
       factura_telefono: texto("factura_telefono"),
       factura_numero: texto("factura_numero"),

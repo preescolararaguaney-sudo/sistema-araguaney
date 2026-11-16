@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreatePersona } from "@/lib/personas";
+import { formatoNombre } from "@/lib/formato-nombre";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -70,8 +71,8 @@ export async function crearAlumno(
   const { data: alumno, error: errorAlumno } = await supabase
     .from("alumnos")
     .insert({
-      nombre: alumnoNombre,
-      apellido: alumnoApellido,
+      nombre: formatoNombre(alumnoNombre),
+      apellido: formatoNombre(alumnoApellido),
       fecha_nacimiento: fechaNacimiento,
       datos_medicos: datosMedicos || null,
       alergias: alergias || null,

@@ -1,5 +1,6 @@
 "use server";
 
+import { formatoNombre } from "@/lib/formato-nombre";
 import { redirect } from "next/navigation";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -60,8 +61,8 @@ export async function aprobarSolicitudPersonal(
   const { data: trabajador, error: errTrabajador } = await supabase
     .from("trabajadores")
     .insert({
-      nombre: sol.nombre,
-      apellido: sol.apellido,
+      nombre: formatoNombre(sol.nombre as string),
+      apellido: formatoNombre(sol.apellido as string),
       cedula,
       telefono: sol.telefono ?? null,
       direccion: sol.direccion ?? null,

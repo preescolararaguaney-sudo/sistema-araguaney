@@ -1,5 +1,6 @@
 "use server";
 
+import { formatoNombre } from "@/lib/formato-nombre";
 import { redirect } from "next/navigation";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -77,8 +78,8 @@ export async function actualizarAlumno(
   const { error: errorAlumno } = await supabase
     .from("alumnos")
     .update({
-      nombre,
-      apellido,
+      nombre: formatoNombre(nombre),
+      apellido: formatoNombre(apellido),
       fecha_nacimiento: fechaNacimiento || null,
       datos_medicos: datosMedicos || null,
       alergias: alergias || null,

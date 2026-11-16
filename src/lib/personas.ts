@@ -1,5 +1,6 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
+import { formatoNombre } from "@/lib/formato-nombre";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -87,8 +88,8 @@ export async function findOrCreatePersona(
     await supabase
       .from("personas")
       .update({
-        nombre: datos.nombre,
-        apellido: datos.apellido,
+        nombre: formatoNombre(datos.nombre),
+        apellido: formatoNombre(datos.apellido),
         telefono: datos.telefono ?? null,
         ...extendidosPasados,
       })
@@ -104,8 +105,8 @@ export async function findOrCreatePersona(
     .from("personas")
     .insert({
       cedula,
-      nombre: datos.nombre,
-      apellido: datos.apellido,
+      nombre: formatoNombre(datos.nombre),
+      apellido: formatoNombre(datos.apellido),
       telefono: datos.telefono ?? null,
       email: datos.email ?? null,
       ...extendidosConDefecto,

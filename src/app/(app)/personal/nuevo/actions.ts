@@ -1,5 +1,6 @@
 "use server";
 
+import { formatoNombre } from "@/lib/formato-nombre";
 import { redirect } from "next/navigation";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -37,8 +38,8 @@ export async function crearTrabajador(
   const { data, error } = await supabase
     .from("trabajadores")
     .insert({
-      nombre,
-      apellido,
+      nombre: formatoNombre(nombre),
+      apellido: formatoNombre(apellido),
       cedula,
       telefono: telefono || null,
       direccion: direccion || null,

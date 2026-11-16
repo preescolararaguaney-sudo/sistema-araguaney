@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { procesarPago } from "@/lib/pagos";
 import { destinatarioDeMatricula, soloDigitos, sugerirConceptos } from "@/lib/matching-pagos";
 import { leerOpcionesPago } from "@/lib/pagos-form";
+import { formatoNombre } from "@/lib/formato-nombre";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -32,7 +33,7 @@ export async function aprobarPendiente(
 
   const id = texto(formData, "pendiente_id");
   const matriculaId = texto(formData, "matricula_id");
-  const facturaNombre = texto(formData, "factura_nombre");
+  const facturaNombre = formatoNombre(texto(formData, "factura_nombre"));
   const facturaCedula = texto(formData, "factura_cedula");
 
   if (!id || !matriculaId) return { error: "Falta elegir el alumno." };
@@ -256,7 +257,7 @@ export async function crearAlumnoDesdePago(
 
   const { data: alumno, error: errorAlumno } = await supabase
     .from("alumnos")
-    .insert({ nombre, apellido, fecha_nacimiento: fechaNacimiento || null })
+    .insert({ nombre: formatoNombre(nombre), apellido: formatoNombre(apellido), fecha_nacimiento: fechaNacimiento || null })
     .select("id")
     .single();
   if (errorAlumno || !alumno) return { error: `No se pudo crear el alumno: ${errorAlumno?.message}` };

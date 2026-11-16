@@ -1,5 +1,6 @@
 "use server";
 
+import { formatoNombre } from "@/lib/formato-nombre";
 import { redirect } from "next/navigation";
 import { requireRol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -48,8 +49,8 @@ export async function aprobarSolicitud(
     // estaba bien cargado.
     alumnoId = sol.alumno_existente_id as string;
     const actualizacion: Record<string, unknown> = {};
-    if (sol.alumno_nombre) actualizacion.nombre = sol.alumno_nombre;
-    if (sol.alumno_apellido) actualizacion.apellido = sol.alumno_apellido;
+    if (sol.alumno_nombre) actualizacion.nombre = formatoNombre(sol.alumno_nombre as string);
+    if (sol.alumno_apellido) actualizacion.apellido = formatoNombre(sol.alumno_apellido as string);
     if (sol.alumno_fecha_nacimiento) actualizacion.fecha_nacimiento = sol.alumno_fecha_nacimiento;
     if (sol.alumno_lugar_nacimiento) actualizacion.lugar_nacimiento = sol.alumno_lugar_nacimiento;
     if (sol.alumno_direccion) actualizacion.direccion = sol.alumno_direccion;
@@ -82,8 +83,8 @@ export async function aprobarSolicitud(
     const { data: alumno, error: errAlumno } = await supabase
       .from("alumnos")
       .insert({
-        nombre: sol.alumno_nombre,
-        apellido: sol.alumno_apellido,
+        nombre: formatoNombre(sol.alumno_nombre as string),
+        apellido: formatoNombre(sol.alumno_apellido as string),
         fecha_nacimiento: sol.alumno_fecha_nacimiento,
         lugar_nacimiento: sol.alumno_lugar_nacimiento,
         direccion: sol.alumno_direccion,
