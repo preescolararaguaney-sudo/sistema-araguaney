@@ -50,12 +50,14 @@ export default async function PanelPage() {
       <div className="mt-6 flex flex-wrap gap-2">
         <a
           href="/cobranza/deuda-actual/exportar"
+          download
           className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
         >
           Deuda por mes de cada alumno (Excel)
         </a>
         <a
           href="/alumnos/exportar-nomina"
+          download
           className="rounded-md border border-stone-300 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
         >
           Nómina de alumnos por sección (Excel)

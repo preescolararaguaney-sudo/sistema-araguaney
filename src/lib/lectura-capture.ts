@@ -1,6 +1,6 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import OpenAI from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 // Lo que la IA extrae de un capture de pago. Todo es nullable: si algo no se
@@ -43,38 +43,44 @@ export async function leerCapture(
   archivo: { buffer: ArrayBuffer; contentType: string },
   nota: string,
 ): Promise<ResultadoLectura> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { error: "Falta la variable ANTHROPIC_API_KEY." };
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return { error: "Falta configurar OPENAI_API_KEY para leer comprobantes." };
   }
 
-  const client = new Anthropic();
+  if (!["application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif"].includes(archivo.contentType)) {
+    return { error: "Formato no compatible. Envía una imagen JPG, PNG, WEBP, GIF o un PDF." };
+  }
+
+  // El webhook dispone de 60 s en total: reservar tiempo para guardar la
+  // lectura y responder por Telegram, sin reintentos que agoten ese plazo.
+  const client = new OpenAI({ apiKey, timeout: 40_000, maxRetries: 0 });
   const datos = Buffer.from(archivo.buffer).toString("base64");
 
-  const contenidoArchivo: Anthropic.ContentBlockParam =
+  const contenidoArchivo: OpenAI.Responses.ResponseInputContent =
     archivo.contentType === "application/pdf"
-      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: datos } }
+      ? { type: "input_file", filename: "comprobante.pdf", file_data: `data:application/pdf;base64,${datos}` }
       : {
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: archivo.contentType as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
-            data: datos,
-          },
+          type: "input_image",
+          image_url: `data:${archivo.contentType};base64,${datos}`,
+          detail: "high",
         };
 
   try {
-    const respuesta = await client.messages.parse({
-      model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5",
-      max_tokens: 4000,
-      system: SISTEMA,
-      output_config: { effort: "low", format: zodOutputFormat(LecturaSchema) },
-      messages: [
+    const respuesta = await client.responses.parse({
+      model: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra",
+      max_output_tokens: 4000,
+      instructions: SISTEMA,
+      reasoning: { effort: "low" },
+      store: false,
+      text: { format: zodTextFormat(LecturaSchema, "lectura_comprobante") },
+      input: [
         {
           role: "user",
           content: [
             contenidoArchivo,
             {
-              type: "text",
+              type: "input_text",
               text: nota.trim()
                 ? `Nota de quien lo reenvía: "${nota.trim()}"`
                 : "Sin nota de texto.",
@@ -84,16 +90,20 @@ export async function leerCapture(
       ],
     });
 
-    if (respuesta.stop_reason === "refusal") {
-      return { error: "La IA no quiso procesar esa imagen." };
+    if (respuesta.output.some((item) => item.type === "message" && item.content.some((parte) => parte.type === "refusal"))) {
+      return { error: "La IA no pudo procesar ese comprobante. Revísalo manualmente." };
     }
-    if (!respuesta.parsed_output) {
+    if (respuesta.status !== "completed" || !respuesta.output_parsed) {
       return { error: "La IA no devolvió una lectura válida." };
     }
-    return { lectura: respuesta.parsed_output };
+    return { lectura: LecturaSchema.parse(respuesta.output_parsed) };
   } catch (error) {
-    if (error instanceof Anthropic.APIError) {
-      return { error: `Error de la API de IA (${error.status}): ${error.message}` };
+    // No reenviar mensajes crudos del proveedor: podrían incluir datos del pedido.
+    if (error instanceof OpenAI.APIError) {
+      if (error.status === 401) return { error: "La clave de OpenAI no es válida. Revisa OPENAI_API_KEY." };
+      if (error.status === 429) return { error: "OpenAI no pudo procesar la lectura por saldo o límite de uso. Revisa la cuenta e inténtalo de nuevo." };
+      if (error.status === 403 || error.status === 404) return { error: "OpenAI no permite acceder al modelo configurado. Revisa OPENAI_MODEL y los permisos del proyecto." };
+      return { error: "No se pudo conectar o procesar el comprobante con OpenAI. Inténtalo de nuevo o revísalo manualmente." };
     }
     return { error: "No se pudo leer el capture." };
   }
